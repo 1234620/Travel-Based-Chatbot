@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Travel Assistant Chatbot</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #667eea;
+            --secondary-color: #764ba2;
+            --accent-color: #f093fb;
+            --success-color: #4ade80;
+            --error-color: #ef4444;
+            --warning-color: #f59e0b;
+            --text-primary: #1f2937;
+            --text-secondary: #6b7280;
+            --bg-primary: #ffffff;
+            --bg-secondary: #f9fafb;
+            --border-color: #e5e7eb;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .chat-container {
+            background: var(--bg-primary);
+            border-radius: 20px;
+            box-shadow: var(--shadow-lg);
+            width: 100%;
+            max-width: 1200px;
+            height: 80vh;
+            min-height: 700px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: relative;
+        }
+
+        .chat-header h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .chat-header p {
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+
+        .status-indicator {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            padding: 6px 12px;
+            border-radius: 15px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .status-connected {
+            background: var(--success-color);
+            color: white;
+        }
+
+        .status-disconnected {
+            background: var(--error-color);
+            color: white;
+        }
+
+        .status-connecting {
+            background: var(--warning-color);
+            color: white;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background: var(--bg-secondary);
+        }
+
+        .message {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: flex-start;
+        }
+
+        .message.user {
+            justify-content: flex-end;
+        }
+
+        .message-content {
+            max-width: 70%;
+            padding: 12px 16px;
+            border-radius: 18px;
+            word-wrap: break-word;
+            line-height: 1.4;
+        }
+
+        .message.user .message-content {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.assistant .message-content {
+            background: white;
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-bottom-left-radius: 4px;
+        }
+
+        .message-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 8px;
+            font-size: 0.9rem;
+        }
+
+        .message.user .message-avatar {
+            background: linear-gradient(135deg, var(--accent-color), var(--primary-color));
+            color: white;
+            order: 1;
+        }
+
+        .message.assistant .message-avatar {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+        }
+
+        .typing-indicator {
+            display: none;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .typing-indicator .message-avatar {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+        }
+
+        .typing-dots {
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 18px;
+            padding: 12px 16px;
+            margin-left: 8px;
+        }
+
+        .typing-dots span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--text-secondary);
+            margin: 0 2px;
+            animation: typing 1.4s infinite ease-in-out;
+        }
+
+        .typing-dots span:nth-child(1) { animation-delay: -0.32s; }
+        .typing-dots span:nth-child(2) { animation-delay: -0.16s; }
+
+        @keyframes typing {
+            0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
+            40% { transform: scale(1); opacity: 1; }
+        }
+
+        .chat-input-container {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .chat-input-wrapper {
+            display: flex;
+            gap: 10px;
+            align-items: flex-end;
+        }
+
+        .chat-input {
+            flex: 1;
+            border: 2px solid var(--border-color);
+            border-radius: 25px;
+            padding: 12px 20px;
+            font-size: 1rem;
+            resize: none;
+            outline: none;
+            transition: border-color 0.3s ease;
+            font-family: inherit;
+            max-height: 120px;
+            min-height: 50px;
+        }
+
+        .chat-input:focus {
+            border-color: var(--primary-color);
+        }
+
+        .send-button {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1.1rem;
+        }
+
+        .send-button:hover:not(:disabled) {
+            transform: scale(1.05);
+            box-shadow: var(--shadow);
+        }
+
+        .send-button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .suggestion-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 12px;
+            margin: 20px 0;
+            justify-content: center;
+        }
+
+        .suggestion-chip {
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            color: white;
+            border: none;
+            border-radius: 25px;
+            padding: 12px 20px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .suggestion-chip:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .suggestion-chip i {
+            font-size: 1rem;
+        }
+
+        .welcome-message {
+            text-align: center;
+            color: var(--text-secondary);
+            margin-bottom: 30px;
+            padding: 20px;
+        }
+
+        .welcome-message h2 {
+            color: var(--text-primary);
+            margin-bottom: 15px;
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+
+        .welcome-message p {
+            font-size: 1.1rem;
+            margin-bottom: 25px;
+            line-height: 1.5;
+        }
+
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .feature {
+            background: white;
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+            border: 1px solid var(--border-color);
+        }
+
+        .feature-icon {
+            font-size: 2rem;
+            margin-bottom: 10px;
+            color: var(--primary-color);
+        }
+
+        .feature-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        .feature-description {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
+        .connection-error {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            color: #dc2626;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+            text-align: center;
+        }
+
+        .retry-button {
+            background: var(--error-color);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-top: 8px;
+            font-size: 0.9rem;
+        }
+
+        .retry-button:hover {
+            background: #dc2626;
+        }
+
+        @media (max-width: 768px) {
+            .chat-container {
+                height: 100vh;
+                border-radius: 0;
+                max-width: 100%;
+                min-height: 100vh;
+            }
+            
+            .message-content {
+                max-width: 85%;
+            }
+        }
+
+        @media (min-width: 1400px) {
+            .chat-container {
+                max-width: 1400px;
+                height: 85vh;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h1><i class="fas fa-plane"></i> Travel Assistant</h1>
+            <p>Your AI-powered travel planning companion</p>
+            <div class="status-indicator" id="statusIndicator">
+                <i class="fas fa-circle"></i> Connecting...
+            </div>
+        </div>
+
+        <div class="chat-messages" id="chatMessages">
+            <div class="welcome-message">
+                <h2>Welcome to Travel Assistant! 🌍</h2>
+                <p>I can help you plan your perfect trip with flights, hotels, and detailed itineraries.</p>
+                
+                <div class="suggestion-chips">
+                    <div class="suggestion-chip" onclick="sendSuggestion('I need a flight from NYC to London on 2025-06-15')">
+                        <i class="fas fa-plane"></i> Find Flights
+                    </div>
+                    <div class="suggestion-chip" onclick="sendSuggestion('Show me hotels in Paris from 2025-07-01 to 2025-07-05')">
+                        <i class="fas fa-bed"></i> Find Hotels
+                    </div>
+                    <div class="suggestion-chip" onclick="sendSuggestion('Create a complete travel plan for Tokyo with flights and hotels')">
+                        <i class="fas fa-map"></i> Full Itinerary
+                    </div>
+                    <div class="suggestion-chip" onclick="sendSuggestion('What are the best travel destinations for summer?')">
+                        <i class="fas fa-sun"></i> Travel Ideas
+                    </div>
+                </div>
+
+                <div class="features">
+                    <div class="feature">
+                        <div class="feature-icon"><i class="fas fa-plane"></i></div>
+                        <div class="feature-title">Flight Search</div>
+                        <div class="feature-description">Find the best flight deals and schedules</div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon"><i class="fas fa-bed"></i></div>
+                        <div class="feature-title">Hotel Booking</div>
+                        <div class="feature-description">Discover amazing places to stay</div>
+                    </div>
+                    <div class="feature">
+                        <div class="feature-icon"><i class="fas fa-route"></i></div>
+                        <div class="feature-title">Smart Itineraries</div>
+                        <div class="feature-description">AI-powered travel planning</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="typing-indicator" id="typingIndicator">
+            <div class="message-avatar">
+                <i class="fas fa-robot"></i>
+            </div>
+            <div class="typing-dots">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+
+        <div class="chat-input-container">
+            <div class="chat-input-wrapper">
+                <textarea 
+                    id="messageInput" 
+                    class="chat-input" 
+                    placeholder="Ask me about flights, hotels, or travel planning..."
+                    rows="1"
+                ></textarea>
+                <button id="sendButton" class="send-button" onclick="sendMessage()">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const API_BASE_URL = 'http://localhost:8000';
+        const MAX_RETRIES = 3;
+        const RETRY_DELAY = 2000;
+        
+        // State
+        let userId = 'user_' + Math.random().toString(36).substr(2, 9);
+        let isConnected = false;
+        let retryCount = 0;
+        let connectionCheckInterval = null;
+
+        // DOM Elements
+        const chatMessages = document.getElementById('chatMessages');
+        const messageInput = document.getElementById('messageInput');
+        const sendButton = document.getElementById('sendButton');
+        const statusIndicator = document.getElementById('statusIndicator');
+        const typingIndicator = document.getElementById('typingIndicator');
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            messageInput.focus();
+            checkConnection();
+            setupEventListeners();
+        });
+
+        function setupEventListeners() {
+            // Send message on Enter (but allow Shift+Enter for new lines)
+            messageInput.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
+                }
+            });
+
+            // Auto-resize textarea
+            messageInput.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = Math.min(this.scrollHeight, 120) + 'px';
+            });
+        }
+
+        // Connection Management
+        async function checkConnection() {
+            updateStatus('connecting');
+            
+            try {
+                console.log('🔍 Checking connection to:', API_BASE_URL);
+                
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+                
+                const response = await fetch(`${API_BASE_URL}/`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    signal: controller.signal
+                });
+                
+                clearTimeout(timeoutId);
+                
+                console.log('📡 Response status:', response.status);
+                console.log('📡 Response ok:', response.ok);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('✅ Response data:', data);
+                    updateStatus('connected');
+                    retryCount = 0;
+                    
+                    // Start periodic connection checks
+                    if (connectionCheckInterval) {
+                        clearInterval(connectionCheckInterval);
+                    }
+                    connectionCheckInterval = setInterval(checkConnection, 30000); // Check every 30 seconds
+                    
+                } else {
+                    console.log('❌ Response not ok:', response.status, response.statusText);
+                    updateStatus('disconnected');
+                    scheduleRetry();
+                }
+                
+            } catch (error) {
+                console.error('❌ Connection error:', error);
+                updateStatus('disconnected');
+                scheduleRetry();
+            }
+        }
+
+        function scheduleRetry() {
+            if (retryCount < MAX_RETRIES) {
+                retryCount++;
+                console.log(`🔄 Retrying connection in ${RETRY_DELAY/1000} seconds... (${retryCount}/${MAX_RETRIES})`);
+                setTimeout(checkConnection, RETRY_DELAY);
+            } else {
+                console.log('❌ Max retries reached. Manual retry required.');
+                showConnectionError();
+            }
+        }
+
+        function showConnectionError() {
+            const existingError = document.querySelector('.connection-error');
+            if (existingError) return;
+
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'connection-error';
+            errorDiv.innerHTML = `
+                <i class="fas fa-exclamation-triangle"></i>
+                <strong>Connection Failed</strong><br>
+                Unable to connect to the backend server. Please check if the server is running.
+                <br>
+                <button class="retry-button" onclick="retryConnection()">
+                    <i class="fas fa-redo"></i> Retry Connection
+                </button>
+            `;
+            
+            chatMessages.insertBefore(errorDiv, chatMessages.firstChild);
+        }
+
+        function retryConnection() {
+            const errorDiv = document.querySelector('.connection-error');
+            if (errorDiv) {
+                errorDiv.remove();
+            }
+            retryCount = 0;
+            checkConnection();
+        }
+
+        function updateStatus(status) {
+            const statusText = {
+                'connecting': 'Connecting...',
+                'connected': 'Connected',
+                'disconnected': 'Disconnected'
+            };
+
+            statusIndicator.innerHTML = `<i class="fas fa-circle"></i> ${statusText[status]}`;
+            statusIndicator.className = `status-indicator status-${status}`;
+            
+            isConnected = (status === 'connected');
+            
+            if (status === 'connected') {
+                console.log('✅ Backend connected successfully!');
+            } else if (status === 'disconnected') {
+                console.log('❌ Backend connection failed!');
+            }
+        }
+
+        // Message Handling
+        async function sendMessage() {
+            const message = messageInput.value.trim();
+            if (!message || !isConnected) return;
+
+            // Add user message to chat
+            addMessage(message, 'user');
+            messageInput.value = '';
+            messageInput.style.height = 'auto';
+
+            // Show typing indicator
+            showTypingIndicator();
+
+            try {
+                console.log('📤 Sending message:', message);
+                
+                const response = await fetch(`${API_BASE_URL}/chat`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        message: message,
+                        user_id: userId
+                    })
+                });
+
+                console.log('📥 Response status:', response.status);
+
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('✅ Response data:', data);
+                    
+                    // Hide typing indicator
+                    hideTypingIndicator();
+                    
+                    // Add assistant response
+                    addMessage(data.response || 'Sorry, I could not process your request.', 'assistant');
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
+            } catch (error) {
+                console.error('❌ Error sending message:', error);
+                hideTypingIndicator();
+                addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
+            }
+        }
+
+        function sendSuggestion(suggestion) {
+            if (!isConnected) {
+                alert('Please wait for the connection to be established.');
+                return;
+            }
+            messageInput.value = suggestion;
+            sendMessage();
+        }
+
+        function addMessage(content, sender) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}`;
+
+            const avatar = document.createElement('div');
+            avatar.className = 'message-avatar';
+            avatar.innerHTML = sender === 'user' ? '<i class="fas fa-user"></i>' : '<i class="fas fa-robot"></i>';
+
+            const messageContent = document.createElement('div');
+            messageContent.className = 'message-content';
+            messageContent.innerHTML = formatMessage(content);
+
+            if (sender === 'user') {
+                messageDiv.appendChild(messageContent);
+                messageDiv.appendChild(avatar);
+            } else {
+                messageDiv.appendChild(avatar);
+                messageDiv.appendChild(messageContent);
+            }
+
+            chatMessages.appendChild(messageDiv);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function formatMessage(content) {
+            // Convert markdown-like formatting to HTML
+            return content
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/\n/g, '<br>')
+                .replace(/✈️/g, '<i class="fas fa-plane"></i>')
+                .replace(/🏨/g, '<i class="fas fa-bed"></i>')
+                .replace(/📅/g, '<i class="fas fa-calendar"></i>')
+                .replace(/💰/g, '<i class="fas fa-dollar-sign"></i>')
+                .replace(/⭐/g, '<i class="fas fa-star"></i>');
+        }
+
+        function showTypingIndicator() {
+            typingIndicator.style.display = 'flex';
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        function hideTypingIndicator() {
+            typingIndicator.style.display = 'none';
+        }
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            if (connectionCheckInterval) {
+                clearInterval(connectionCheckInterval);
+            }
+        });
+    </script>
+</body>
+</html>

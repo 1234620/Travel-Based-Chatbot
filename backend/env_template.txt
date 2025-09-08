@@ -1,0 +1,23 @@
+# API Keys for External Services
+# Copy this file to .env and fill in your actual API keys
+
+# Amadeus API (for flight searches)
+AMADEUS_API_KEY=your_amadeus_api_key_here
+AMADEUS_API_SECRET=your_amadeus_api_secret_here
+
+# Booking.com RapidAPI (for hotel searches)
+BOOKING_API_KEY=your_booking_rapidapi_key_here
+
+# AWS Bedrock Configuration (for RAG agent)
+AWS_ACCESS_KEY_ID=your_aws_access_key_id_here
+AWS_SECRET_ACCESS_KEY=your_aws_secret_access_key_here
+AWS_DEFAULT_REGION=us-east-1
+BEDROCK_MODEL_ID=amazon.titan-text-express-v1
+
+# Optional: Elasticsearch (if using instead of FAISS)
+# ELASTICSEARCH_URL=http://localhost:9200
+# ELASTICSEARCH_INDEX=travel_itineraries
+
+# Application Configuration
+DEBUG=True
+LOG_LEVEL=INFO
