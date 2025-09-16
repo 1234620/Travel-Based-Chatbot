@@ -1,0 +1,1084 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Book Hotels - Travel Assistant</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" />
+    <style>
+        :root {
+            --gradient-start: #6366f1;
+            --gradient-end: #8b5cf6;
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --accent: #fff;
+            --surface: #ffffff;
+            --background: #f8fafc;
+            --input-bg: #f1f5f9;
+            --text-primary: #1e293b;
+            --text-secondary: #64748b;
+            --text-light: #94a3b8;
+            --star-color: #fbbf24;
+            --price-color: #16a34a;
+            --amenity-bg: #f1f5f9;
+            --success: #22c55e;
+            --brand-shadow: rgba(99, 102, 241, 0.1);
+            --rating-excellent: #22c55e;
+            --rating-good: #6366f1;
+            --rating-average: #f59e0b;
+            --brand-color-1: #818cf8;
+            --brand-color-2: #6366f1;
+            --brand-color-3: #4f46e5;
+        }
+
+
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            line-height: 1.6;
+            color: var(--text-primary);
+            background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+            min-height: 100vh;
+        }
+
+        .hero {
+            height: 50vh;
+            background: linear-gradient(rgba(15, 23, 42, 0.7), rgba(15, 23, 42, 0.7)),
+                        url('https://images.unsplash.com/photo-1571896349842-33c89424de2d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1920&q=80');
+            background-size: cover;
+            background-position: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: var(--accent);
+            text-align: center;
+            padding: 2rem;
+            position: relative;
+        }
+
+        .back-button {
+            position: absolute;
+            top: 2rem;
+            left: 2rem;
+            color: var(--accent);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-weight: 500;
+            transition: transform 0.3s ease;
+        }
+
+        .back-button:hover {
+            transform: translateX(-4px);
+        }
+
+        .hero h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            max-width: 600px;
+            margin-bottom: 2rem;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .search-card {
+            background: var(--surface);
+            border-radius: 24px;
+            width: 90%;
+            max-width: 1200px;
+            margin: -150px auto 2rem;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 2rem;
+            position: relative;
+            z-index: 10;
+            border: 1px solid var(--brand-shadow);
+            backdrop-filter: blur(10px);
+        }
+
+        .search-tabs {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .search-tab {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            background: none;
+            font-weight: 600;
+            color: var(--text-secondary);
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s ease;
+        }
+
+        .search-tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .search-form {
+            display: grid;
+            gap: 1.5rem;
+        }
+
+        .search-row {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr auto;
+            gap: 1rem;
+            align-items: start;
+        }
+
+        .form-group {
+            position: relative;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            color: var(--text-primary);
+        }
+
+        .input-wrapper {
+            position: relative;
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 1rem 1rem 1rem 2.5rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 1rem;
+            background: var(--input-bg);
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            background: var(--surface);
+        }
+
+        .input-icon {
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--primary);
+            font-size: 1.1rem;
+        }
+
+        .search-button {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-top: 1.9rem;
+        }
+
+        .search-button:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+        }
+
+        .filters {
+            display: flex;
+            gap: 1rem;
+            margin: 1.5rem 0;
+            flex-wrap: wrap;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background: var(--background);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .filter-group:hover {
+            background: var(--input-bg);
+        }
+
+        .filter-group input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--primary);
+        }
+
+        .star-rating {
+            color: var(--star-color);
+            margin-left: 0.25rem;
+        }
+
+        .trending {
+            margin-top: 2rem;
+        }
+
+        .trending-label {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.5rem;
+        }
+
+        .trending-list {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .trending-item {
+            padding: 0.5rem 1rem;
+            background: var(--background);
+            border-radius: 20px;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 1px solid #e2e8f0;
+        }
+
+        .trending-item:hover {
+            background: var(--primary);
+            color: var(--accent);
+            border-color: var(--primary);
+        }
+
+        .guests-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: var(--surface);
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            padding: 1rem;
+            margin-top: 0.5rem;
+            z-index: 100;
+            display: none;
+        }
+
+        .guests-dropdown.active {
+            display: block;
+        }
+
+        .guest-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+        }
+
+        .guest-type {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .guest-controls {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .guest-button {
+            width: 24px;
+            height: 24px;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--surface);
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .guest-button:hover {
+            background: var(--input-bg);
+            border-color: var(--primary);
+        }
+
+        .guest-count {
+            font-weight: 500;
+            min-width: 20px;
+            text-align: center;
+        }
+
+        @media (max-width: 1024px) {
+            .search-row {
+                grid-template-columns: 1fr 1fr;
+                gap: 1.5rem;
+            }
+            
+            .search-button {
+                grid-column: span 2;
+                margin-top: 0;
+            }
+
+            .filters {
+                gap: 0.75rem;
+            }
+
+            .trending-list {
+                gap: 0.75rem;
+            }
+        }
+
+        /* Featured Properties Styles */
+        .featured-properties,
+        .special-offers {
+            width: 85%;
+            max-width: 1200px;
+            margin: 4rem auto;
+        }
+
+        .section-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: var(--accent);
+            margin-bottom: 2rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .section-title i {
+            color: var(--accent);
+            font-size: 1.5rem;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .properties-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+        }
+
+        .property-card {
+            background: var(--surface);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px var(--brand-shadow);
+            transition: all 0.3s ease;
+        }
+
+        .property-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px var(--brand-shadow);
+        }
+
+        .property-image {
+            position: relative;
+            height: 200px;
+        }
+
+        .property-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .property-badge {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: var(--primary);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .property-content {
+            padding: 1.5rem;
+        }
+
+        .property-rating {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .rating {
+            padding: 0.25rem 0.5rem;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.875rem;
+            color: white;
+        }
+
+        .rating.excellent {
+            background: var(--rating-excellent);
+        }
+
+        .rating.good {
+            background: var(--rating-good);
+        }
+
+        .rating.average {
+            background: var(--rating-average);
+        }
+
+        .rating-text {
+            display: flex;
+            flex-direction: column;
+            font-size: 0.875rem;
+        }
+
+        .rating-text span {
+            color: var(--text-secondary);
+        }
+
+        .property-location {
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .property-amenities {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .property-amenities span {
+            background: var(--amenity-bg);
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .property-price {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .price-value {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .price {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: var(--price-color);
+        }
+
+        .per-night {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .discount-badge {
+            background: var(--success);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        /* Special Offers Styles */
+        .offers-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+        }
+
+        .offer-card {
+            background: var(--surface);
+            border-radius: 16px;
+            padding: 1.5rem;
+            border: 1px solid var(--brand-shadow);
+            transition: all 0.3s ease;
+        }
+
+        .offer-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 24px var(--brand-shadow);
+        }
+
+        .offer-tag {
+            display: inline-block;
+            background: var(--primary);
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        .offer-features {
+            list-style: none;
+            margin: 1rem 0;
+        }
+
+        .offer-features li {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .offer-features li i {
+            color: var(--success);
+        }
+
+        .offer-price {
+            margin-top: 1.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .price-details {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .original-price {
+            color: var(--text-light);
+            text-decoration: line-through;
+            font-size: 0.875rem;
+        }
+
+        .discounted-price {
+            color: var(--price-color);
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .view-offer-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .view-offer-btn:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+
+        @media (max-width: 768px) {
+            .hero {
+                height: 50vh;
+                padding: 1rem;
+            }
+
+            .hero h1 {
+                font-size: 2rem;
+            }
+
+            .hero p {
+                font-size: 1rem;
+                margin-bottom: 1.5rem;
+            }
+
+            .search-card {
+                padding: 1.5rem;
+                width: 95%;
+                margin-top: -50px;
+            }
+
+            .search-row {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .search-button {
+                grid-column: auto;
+                margin-top: 0;
+            }
+
+            .back-button {
+                top: 1rem;
+                left: 1rem;
+                font-size: 0.875rem;
+            }
+
+            .search-tabs {
+                gap: 0.5rem;
+                margin-bottom: 1.5rem;
+                flex-wrap: wrap;
+            }
+
+            .search-tab {
+                padding: 0.5rem 1rem;
+                font-size: 0.875rem;
+            }
+
+            .filter-group {
+                padding: 0.375rem 0.75rem;
+                font-size: 0.875rem;
+            }
+
+            .trending-item {
+                font-size: 0.813rem;
+                padding: 0.375rem 0.75rem;
+            }
+        }
+
+        /* Smooth transitions and animations */
+        .search-tab,
+        .form-control,
+        .search-button,
+        .filter-group,
+        .trending-item,
+        .guest-button {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .search-button:active,
+        .guest-button:active {
+            transform: scale(0.95);
+        }
+
+        .guests-dropdown {
+            transition: opacity 0.2s ease, transform 0.2s ease;
+            opacity: 0;
+            transform: translateY(-10px);
+        }
+
+        .guests-dropdown.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .search-card {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+    </style>
+</head>
+<body>
+    <section class="hero">
+        <a href="index.html" class="back-button">
+            <i class="fas fa-arrow-left"></i>
+            Back to Home
+        </a>
+        <h1>Find your perfect stay</h1>
+        <p>Discover amazing places and book with ease for your next stay</p>
+    </section>
+
+    <main class="search-card">
+        <div class="search-tabs">
+            <button class="search-tab active">
+                <i class="fas fa-bed"></i>
+                Hotels & Homes
+            </button>
+            <button class="search-tab">
+                <i class="fas fa-home"></i>
+                Private Stays
+            </button>
+            <button class="search-tab">
+                <i class="fas fa-building"></i>
+                Monthly Stays
+            </button>
+        </div>
+
+        <form class="search-form">
+            <div class="search-row">
+                <div class="form-group">
+                    <label for="location">Where do you want to stay?</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-map-marker-alt input-icon"></i>
+                        <input type="text" id="location" class="form-control" placeholder="Enter destination or hotel name" value="Goa">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="check-in">Check-in</label>
+                    <div class="input-wrapper">
+                        <i class="far fa-calendar input-icon"></i>
+                        <input type="date" id="check-in" class="form-control" value="2025-09-17">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="check-out">Check-out</label>
+                    <div class="input-wrapper">
+                        <i class="far fa-calendar input-icon"></i>
+                        <input type="date" id="check-out" class="form-control" value="2025-09-18">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="guests">Rooms & Guests</label>
+                    <div class="input-wrapper">
+                        <i class="fas fa-user input-icon"></i>
+                        <input type="text" id="guests" class="form-control" readonly value="1 Room, 2 Adults" data-toggle="guests">
+                    </div>
+                    <div class="guests-dropdown">
+                        <div class="guest-row">
+                            <span class="guest-type">Rooms</span>
+                            <div class="guest-controls">
+                                <button type="button" class="guest-button" data-action="decrease" data-target="rooms">-</button>
+                                <span class="guest-count">1</span>
+                                <button type="button" class="guest-button" data-action="increase" data-target="rooms">+</button>
+                            </div>
+                        </div>
+                        <div class="guest-row">
+                            <span class="guest-type">Adults</span>
+                            <div class="guest-controls">
+                                <button type="button" class="guest-button" data-action="decrease" data-target="adults">-</button>
+                                <span class="guest-count">2</span>
+                                <button type="button" class="guest-button" data-action="increase" data-target="adults">+</button>
+                            </div>
+                        </div>
+                        <div class="guest-row">
+                            <span class="guest-type">Children</span>
+                            <div class="guest-controls">
+                                <button type="button" class="guest-button" data-action="decrease" data-target="children">-</button>
+                                <span class="guest-count">0</span>
+                                <button type="button" class="guest-button" data-action="increase" data-target="children">+</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="submit" class="search-button">
+                    <i class="fas fa-search"></i>
+                    Search
+                </button>
+            </div>
+
+            <div class="filters">
+                <label class="filter-group">
+                    <input type="checkbox" id="free-cancel">
+                    Free cancellation
+                </label>
+                <label class="filter-group">
+                    <input type="checkbox" id="star-4">
+                    4 stars
+                    <span class="star-rating">
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                    </span>
+                </label>
+                <label class="filter-group">
+                    <input type="checkbox" id="star-3">
+                    3 stars
+                    <span class="star-rating">
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                        <i class="fas fa-star"></i>
+                    </span>
+                </label>
+                <label class="filter-group">
+                    <input type="checkbox" id="pool">
+                    <i class="fas fa-swimming-pool"></i>
+                    Pool
+                </label>
+                <label class="filter-group">
+                    <input type="checkbox" id="beach">
+                    <i class="fas fa-umbrella-beach"></i>
+                    Beach access
+                </label>
+            </div>
+
+            <div class="trending">
+                <div class="trending-label">Trending Searches:</div>
+                <div class="trending-list">
+                    <div class="trending-item">Mumbai, India</div>
+                    <div class="trending-item">London, United Kingdom</div>
+                    <div class="trending-item">Bangkok, Thailand</div>
+                    <div class="trending-item">Dubai, UAE</div>
+                </div>
+            </div>
+        </form>
+    </main>
+
+    <section class="featured-properties">
+        <h2 class="section-title"><i class="fas fa-hotel"></i> Featured Properties</h2>
+        <div class="properties-grid">
+            <div class="property-card">
+                <div class="property-image">
+                    <img src="https://images.unsplash.com/photo-1566073771259-6a8506099945?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80" alt="Luxury Hotel">
+                    <div class="property-badge">LUXURY</div>
+                </div>
+                <div class="property-content">
+                    <div class="property-rating">
+                        <span class="rating excellent">9.2</span>
+                        <div class="rating-text">
+                            <strong>Excellent</strong>
+                            <span>2,145 reviews</span>
+                        </div>
+                    </div>
+                    <h3>The Taj Palace</h3>
+                    <p class="property-location"><i class="fas fa-map-marker-alt"></i> Mumbai, Maharashtra</p>
+                    <div class="property-amenities">
+                        <span><i class="fas fa-wifi"></i> Free WiFi</span>
+                        <span><i class="fas fa-swimming-pool"></i> Pool</span>
+                        <span><i class="fas fa-spa"></i> Spa</span>
+                    </div>
+                    <div class="property-price">
+                        <div class="price-value">
+                            <span class="price">₹12,999</span>
+                            <span class="per-night">per night</span>
+                        </div>
+                        <div class="discount-badge">25% OFF</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="property-card">
+                <div class="property-image">
+                    <img src="https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80" alt="Beachfront Resort">
+                    <div class="property-badge">BEACHFRONT</div>
+                </div>
+                <div class="property-content">
+                    <div class="property-rating">
+                        <span class="rating good">8.8</span>
+                        <div class="rating-text">
+                            <strong>Very Good</strong>
+                            <span>1,879 reviews</span>
+                        </div>
+                    </div>
+                    <h3>Paradise Beach Resort</h3>
+                    <p class="property-location"><i class="fas fa-map-marker-alt"></i> Goa</p>
+                    <div class="property-amenities">
+                        <span><i class="fas fa-umbrella-beach"></i> Private Beach</span>
+                        <span><i class="fas fa-cocktail"></i> Bar</span>
+                        <span><i class="fas fa-water"></i> Water Sports</span>
+                    </div>
+                    <div class="property-price">
+                        <div class="price-value">
+                            <span class="price">₹8,499</span>
+                            <span class="per-night">per night</span>
+                        </div>
+                        <div class="discount-badge">30% OFF</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="property-card">
+                <div class="property-image">
+                    <img src="https://images.unsplash.com/photo-1542314831-068cd1dbfeeb?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1740&q=80" alt="Heritage Hotel">
+                    <div class="property-badge">HERITAGE</div>
+                </div>
+                <div class="property-content">
+                    <div class="property-rating">
+                        <span class="rating excellent">9.5</span>
+                        <div class="rating-text">
+                            <strong>Exceptional</strong>
+                            <span>1,456 reviews</span>
+                        </div>
+                    </div>
+                    <h3>Royal Heritage Palace</h3>
+                    <p class="property-location"><i class="fas fa-map-marker-alt"></i> Jaipur, Rajasthan</p>
+                    <div class="property-amenities">
+                        <span><i class="fas fa-utensils"></i> Fine Dining</span>
+                        <span><i class="fas fa-concierge-bell"></i> Butler</span>
+                        <span><i class="fas fa-camera"></i> Heritage Tours</span>
+                    </div>
+                    <div class="property-price">
+                        <div class="price-value">
+                            <span class="price">₹15,999</span>
+                            <span class="per-night">per night</span>
+                        </div>
+                        <div class="discount-badge">20% OFF</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="special-offers">
+        <h2 class="section-title"><i class="fas fa-gift"></i> Exclusive Hotel Offers</h2>
+        <div class="offers-grid">
+            <div class="offer-card">
+                <div class="offer-content">
+                    <div class="offer-tag">LIMITED TIME</div>
+                    <h3>Luxury Weekend Escape</h3>
+                    <ul class="offer-features">
+                        <li><i class="fas fa-check"></i> 3 Nights Stay</li>
+                        <li><i class="fas fa-check"></i> Complimentary Breakfast</li>
+                        <li><i class="fas fa-check"></i> Spa Treatment</li>
+                        <li><i class="fas fa-check"></i> Airport Transfer</li>
+                    </ul>
+                    <div class="offer-price">
+                        <div class="price-details">
+                            <span class="original-price">₹45,999</span>
+                            <span class="discounted-price">₹36,799</span>
+                        </div>
+                        <button class="view-offer-btn">View Details</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="offer-card">
+                <div class="offer-content">
+                    <div class="offer-tag">HONEYMOON</div>
+                    <h3>Romantic Getaway Package</h3>
+                    <ul class="offer-features">
+                        <li><i class="fas fa-check"></i> 5 Nights Stay</li>
+                        <li><i class="fas fa-check"></i> Candlelight Dinner</li>
+                        <li><i class="fas fa-check"></i> Couple Spa</li>
+                        <li><i class="fas fa-check"></i> Room Decoration</li>
+                    </ul>
+                    <div class="offer-price">
+                        <div class="price-details">
+                            <span class="original-price">₹65,999</span>
+                            <span class="discounted-price">₹52,799</span>
+                        </div>
+                        <button class="view-offer-btn">View Details</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="offer-card">
+                <div class="offer-content">
+                    <div class="offer-tag">FAMILY</div>
+                    <h3>Family Fun Package</h3>
+                    <ul class="offer-features">
+                        <li><i class="fas fa-check"></i> 4 Nights Stay</li>
+                        <li><i class="fas fa-check"></i> Kids Eat Free</li>
+                        <li><i class="fas fa-check"></i> Adventure Activities</li>
+                        <li><i class="fas fa-check"></i> Family Room Upgrade</li>
+                    </ul>
+                    <div class="offer-price">
+                        <div class="price-details">
+                            <span class="original-price">₹55,999</span>
+                            <span class="discounted-price">₹44,799</span>
+                        </div>
+                        <button class="view-offer-btn">View Details</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Tab switching
+            const tabs = document.querySelectorAll('.search-tab');
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    tabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                });
+            });
+
+            // Set minimum date for check-in and check-out
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('check-in').min = today;
+            document.getElementById('check-out').min = today;
+
+            // Update check-out minimum date when check-in changes
+            document.getElementById('check-in').addEventListener('change', (e) => {
+                document.getElementById('check-out').min = e.target.value;
+            });
+
+            // Guests dropdown
+            const guestsInput = document.getElementById('guests');
+            const guestsDropdown = document.querySelector('.guests-dropdown');
+            const guestButtons = document.querySelectorAll('.guest-button');
+
+            guestsInput.addEventListener('click', (e) => {
+                e.stopPropagation();
+                guestsDropdown.classList.toggle('active');
+            });
+
+            document.addEventListener('click', (e) => {
+                if (!guestsDropdown.contains(e.target) && e.target !== guestsInput) {
+                    guestsDropdown.classList.remove('active');
+                }
+            });
+
+            const guests = {
+                rooms: 1,
+                adults: 2,
+                children: 0
+            };
+
+            guestButtons.forEach(button => {
+                button.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const action = button.dataset.action;
+                    const target = button.dataset.target;
+                    const countElement = button.parentNode.querySelector('.guest-count');
+
+                    if (action === 'increase') {
+                        guests[target]++;
+                    } else if (action === 'decrease' && guests[target] > 0) {
+                        if (target === 'rooms' && guests[target] <= 1) return;
+                        if (target === 'adults' && guests[target] <= 1) return;
+                        guests[target]--;
+                    }
+
+                    countElement.textContent = guests[target];
+                    updateGuestsInput();
+                });
+            });
+
+            function updateGuestsInput() {
+                guestsInput.value = `${guests.rooms} Room${guests.rooms > 1 ? 's' : ''}, ${guests.adults} Adult${guests.adults > 1 ? 's' : ''}${guests.children > 0 ? `, ${guests.children} Child${guests.children > 1 ? 'ren' : ''}` : ''}`;
+            }
+        });
+    </script>
+</body>
+</html>
