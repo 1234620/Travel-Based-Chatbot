@@ -1,0 +1,382 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  /* Updated color tokens to match enhanced travel design brief */
+  --background: #ffffff; /* Pure white background */
+  --foreground: #475569; /* Dark slate gray for text */
+  --card: #f1f5f9; /* Light gray for card backgrounds */
+  --card-foreground: #7c3aed; /* Purple for card text */
+  --popover: #ffffff; /* White for popovers */
+  --popover-foreground: #475569; /* Dark slate for popover text */
+  --primary: #7c3aed; /* Purple primary color */
+  --primary-foreground: #ffffff; /* White text on primary */
+  --secondary: #a855f7; /* Vibrant purple secondary */
+  --secondary-foreground: #ffffff; /* White text on secondary */
+  --muted: #f1f5f9; /* Light gray for muted elements */
+  --muted-foreground: #475569; /* Dark slate for muted text */
+  --accent: #a855f7; /* Vibrant purple accent */
+  --accent-foreground: #ffffff; /* White text on accent */
+  --destructive: #ea580c; /* Orange for errors */
+  --destructive-foreground: #ffffff; /* White text on destructive */
+  --border: #d1d5db; /* Light gray for borders */
+  --input: #ffffff; /* White for input backgrounds */
+  --ring: rgba(124, 58, 237, 0.5); /* Purple ring with opacity */
+  --chart-1: #7c3aed; /* Purple for charts */
+  --chart-2: #a855f7; /* Purple for charts */
+  --chart-3: #ea580c; /* Orange for charts */
+  --chart-4: #d97706; /* Amber for charts */
+  --chart-5: #f97316; /* Orange for charts */
+  --radius: 0.5rem; /* Rounded corners */
+  --sidebar: #ffffff; /* White for sidebar */
+  --sidebar-foreground: #475569; /* Dark slate for sidebar text */
+  --sidebar-primary: #7c3aed; /* Purple for sidebar primary */
+  --sidebar-primary-foreground: #ffffff; /* White for sidebar primary text */
+  --sidebar-accent: #a855f7; /* Purple for sidebar accent */
+  --sidebar-accent-foreground: #ffffff; /* White for sidebar accent text */
+  --sidebar-border: #d1d5db; /* Light gray for sidebar border */
+  --sidebar-ring: rgba(124, 58, 237, 0.5); /* Purple ring for sidebar */
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.145 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.145 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.985 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.396 0.141 25.723);
+  --destructive-foreground: oklch(0.637 0.237 25.331);
+  --border: oklch(0.269 0 0);
+  --input: oklch(0.269 0 0);
+  --ring: oklch(0.439 0 0);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(0.269 0 0);
+  --sidebar-ring: oklch(0.439 0 0);
+}
+
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Enhanced custom styles for travel website with animations and effects */
+@layer components {
+  .hero-gradient {
+    background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-accent) 100%);
+  }
+
+  .hero-bg {
+    /* Ensure dark background as primary with image overlay */
+    background: linear-gradient(135deg, #1f2937 0%, #374151 100%);
+    background-image: linear-gradient(135deg, rgba(124, 58, 237, 0.8) 0%, rgba(168, 85, 247, 0.8) 100%),
+      url("/placeholder.svg?height=1080&width=1920");
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+  }
+
+  .glass-effect {
+    backdrop-filter: blur(16px);
+    /* Improved glass effect with better contrast */
+    background: rgba(124, 58, 237, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  }
+
+  .card-hover {
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .card-hover:hover {
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 25px 50px rgba(124, 58, 237, 0.15);
+  }
+
+  /* Added new tab transition effects */
+  .tab-transition {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .tab-transition::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+  }
+
+  .tab-transition:hover::before {
+    left: 100%;
+  }
+
+  .tab-transition:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(124, 58, 237, 0.3);
+  }
+
+  .page-transition {
+    animation: pageSlideIn 0.5s ease-out;
+  }
+
+  @keyframes pageSlideIn {
+    from {
+      opacity: 0;
+      transform: translateX(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  /* Added special effects for hotels and flights tabs */
+  .flights-effect {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .flights-effect::after {
+    content: "✈️";
+    position: absolute;
+    top: 50%;
+    right: -30px;
+    transform: translateY(-50%);
+    font-size: 1.2rem;
+    opacity: 0;
+    transition: all 0.3s ease;
+  }
+
+  .flights-effect:hover::after {
+    right: 10px;
+    opacity: 1;
+    animation: flyIn 0.6s ease-out;
+  }
+
+  @keyframes flyIn {
+    0% {
+      transform: translateY(-50%) translateX(-20px) rotate(-10deg);
+    }
+    100% {
+      transform: translateY(-50%) translateX(0) rotate(0deg);
+    }
+  }
+
+  .hotels-effect {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .hotels-effect::after {
+    content: "🏨";
+    position: absolute;
+    top: 50%;
+    right: -30px;
+    transform: translateY(-50%);
+    font-size: 1.2rem;
+    opacity: 0;
+    transition: all 0.3s ease;
+  }
+
+  .hotels-effect:hover::after {
+    right: 10px;
+    opacity: 1;
+    animation: buildingRise 0.6s ease-out;
+  }
+
+  @keyframes buildingRise {
+    0% {
+      transform: translateY(20px) scale(0.8);
+      opacity: 0;
+    }
+    100% {
+      transform: translateY(-50%) scale(1);
+      opacity: 1;
+    }
+  }
+
+  .parallax-bg {
+    background-attachment: fixed;
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+  }
+
+  .fade-in {
+    animation: fadeIn 0.8s ease-in-out;
+  }
+
+  .slide-up {
+    animation: slideUp 0.6s ease-out;
+  }
+
+  .bounce-in {
+    animation: bounceIn 0.8s ease-out;
+  }
+
+  .pulse-glow {
+    animation: pulseGlow 2s infinite;
+  }
+
+  .floating {
+    animation: floating 3s ease-in-out infinite;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes bounceIn {
+    0% {
+      opacity: 0;
+      transform: scale(0.3);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.05);
+    }
+    70% {
+      transform: scale(0.9);
+    }
+    100% {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes pulseGlow {
+    0%,
+    100% {
+      /* Updated glow effect to purple */
+      box-shadow: 0 0 20px rgba(124, 58, 237, 0.4);
+    }
+    50% {
+      box-shadow: 0 0 40px rgba(124, 58, 237, 0.8);
+    }
+  }
+
+  @keyframes floating {
+    0%,
+    100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+
+  .gradient-text {
+    /* Updated gradient text to purple theme */
+    background: linear-gradient(135deg, var(--color-accent), var(--color-primary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .section-bg-1 {
+    background: linear-gradient(rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.95)),
+      url("/placeholder.svg?height=800&width=1920");
+  }
+
+  .section-bg-2 {
+    /* Updated section background to purple theme */
+    background: linear-gradient(rgba(124, 58, 237, 0.9), rgba(168, 85, 247, 0.9)),
+      url("/placeholder.svg?height=800&width=1920");
+  }
+
+  .testimonial-bg {
+    background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), url("/placeholder.svg?height=600&width=1920");
+  }
+}
+
+/* Add z-index styles for popovers */
+.radix-popover-content {  
+  z-index: 999 !important;
+}
+

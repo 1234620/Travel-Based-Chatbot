@@ -57,45 +57,27 @@ async def flight_agent(
 
 @app.get("/hotel")
 async def hotel_agent(
-    dest_id: str = Query(..., description="Destination ID for hotel search (e.g., city ID)"),
-    search_type: str = Query("CITY", description="Search type (e.g., CITY)"),
-    arrival_date: str = Query(..., description="Arrival date in YYYY-MM-DD format"),
-    departure_date: str = Query(..., description="Departure date in YYYY-MM-DD format"),
-    adults: int = Query(1, description="Number of adults"),
-    children_age: str = Query("0,17", description="Comma-separated ages of children"),
-    room_qty: int = Query(1, description="Number of rooms"),
-    page_number: int = Query(1, description="Page number for results"),
-    price_min: int = Query(0, description="Minimum price filter for search"),
-    price_max: int = Query(0, description="Maximum price filter for search"),
-    sort_by: str = Query(None, description="Sort by parameter"),
-    categories_filter: str = Query(None, description="Categories filter parameter"),
-    units: str = Query("metric", description="Units (metric/imperial)"),
-    temperature_unit: str = Query("c", description="Temperature unit (c/f)"),
-    languagecode: str = Query("en-us", description="Language code"),
-    currency_code: str = Query("AED", description="Currency code"),
-    location: str = Query("US", description="Location code")
+    latitude: float = Query(..., description="Latitude for hotel search (e.g., 19.0760 for Mumbai)"),
+    longitude: float = Query(..., description="Longitude for hotel search (e.g., 72.8777 for Mumbai)"),
+    checkin: str = Query(..., description="Check-in date in YYYY-MM-DD format"),
+    checkout: str = Query(..., description="Check-out date in YYYY-MM-DD format"),
+    adults: int = Query(2, description="Number of adults"),
+    radius: int = Query(50, description="Search radius in kilometers")
 ):
-    agent = HotelAgent()
-    result = await agent.search_hotels(
-        dest_id,
-        search_type,
-        arrival_date,
-        departure_date,
-        adults,
-        children_age,
-        room_qty,
-        page_number,
-        price_min,
-        price_max,
-        sort_by,
-        categories_filter,
-        units,
-        temperature_unit,
-        languagecode,
-        currency_code,
-        location
-    )
-    return result
+    try:
+        agent = HotelAgent()
+        result = await agent.search_hotels(
+            latitude=latitude,
+            longitude=longitude,
+            checkin=checkin,
+            checkout=checkout,
+            adults=adults,
+            radius=radius
+        )
+        return result
+    except Exception as e:
+        logging.error(f"Hotel agent error: {e}")
+        raise HTTPException(status_code=500, detail=f"Hotel search failed: {str(e)}")
 
 @app.get("/rag")
 async def rag_agent(query: str = Query(..., description="Itinerary or hotel query")):
@@ -199,3 +181,158 @@ async def clear_conversation_history(user_id: str):
     """Clear conversation history for a user"""
     orchestrator.clear_conversation_history(user_id)
     return {"message": "Conversation history cleared"}
+
+# New API endpoint for frontend flight search
+@app.post("/api/search-flights")
+async def search_flights_api(request: dict):
+    """Search flights API endpoint for frontend"""
+    try:
+        logging.info(f"Received flight search request: {request}")
+        
+        # Extract parameters from request body
+        origin = request.get("origin")
+        destination = request.get("destination")
+        departure_date = request.get("departure_date")
+        return_date = request.get("return_date")
+        adults = request.get("adults", 1)
+        children = request.get("children", 0)
+        infants = request.get("infants", 0)
+        
+        logging.info(f"Extracted parameters - origin: {origin}, destination: {destination}, departure_date: {departure_date}, return_date: {return_date}, adults: {adults}, children: {children}, infants: {infants}")
+        
+        if not origin or not destination or not departure_date:
+            return {
+                "success": False,
+                "error": "Missing required parameters: origin, destination, departure_date",
+                "outbound_flights": [],
+                "return_flights": []
+            }
+        
+        flight_agent = FlightAgent()
+        
+        # Search for outbound flights (without return_date parameter)
+        logging.info(f"Searching outbound flights from {origin} to {destination} on {departure_date}")
+        outbound_flights = await flight_agent.search_flights(
+            origin, destination, departure_date, None, adults, children, infants
+        )
+        logging.info(f"Outbound flights result: {outbound_flights}")
+        
+        # Search for return flights if return_date is provided
+        return_flights = None
+        if return_date:
+            return_flights = await flight_agent.search_flights(
+                destination, origin, return_date, None, adults, children, infants
+            )
+        
+        # Format the response for frontend
+        formatted_response = {
+            "success": True,
+            "outbound_flights": outbound_flights.get("data", []),
+            "return_flights": return_flights.get("data", []) if return_flights else [],
+            "meta": outbound_flights.get("meta", {}),
+            "dictionaries": outbound_flights.get("dictionaries", {})
+        }
+        
+        return formatted_response
+        
+    except Exception as e:
+        logging.error(f"Flight search API error: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "outbound_flights": [],
+            "return_flights": []
+        }
+
+# New API endpoint for frontend hotel search
+@app.post("/api/search-hotels")
+async def search_hotels_api(request: dict):
+    """Search hotels API endpoint for frontend"""
+    try:
+        logging.info(f"Received hotel search request: {request}")
+        
+        # Extract parameters from request body
+        destination = request.get("destination")
+        check_in = request.get("check_in")
+        check_out = request.get("check_out")
+        rooms = request.get("rooms", 1)
+        adults = request.get("adults", 2)
+        children = request.get("children", 0)
+        
+        logging.info(f"Extracted parameters - destination: {destination}, check_in: {check_in}, check_out: {check_out}, rooms: {rooms}, adults: {adults}, children: {children}")
+        
+        if not destination or not check_in or not check_out:
+            return {
+                "success": False,
+                "error": "Missing required parameters: destination, check_in, check_out",
+                "hotels": []
+            }
+        
+        hotel_agent = HotelAgent()
+        
+        # Map destination names to coordinates for Amadeus API
+        destination_mapping = {
+            "mumbai, maharashtra": {"latitude": 19.0760, "longitude": 72.8777},
+            "delhi": {"latitude": 28.7041, "longitude": 77.1025}, 
+            "new delhi": {"latitude": 28.7041, "longitude": 77.1025},
+            "bangalore, karnataka": {"latitude": 12.9716, "longitude": 77.5946},
+            "chennai, tamil nadu": {"latitude": 13.0827, "longitude": 80.2707},
+            "kolkata, west bengal": {"latitude": 22.5726, "longitude": 88.3639},
+            "hyderabad, telangana": {"latitude": 17.3850, "longitude": 78.4867},
+            "goa": {"latitude": 15.2993, "longitude": 74.1240},
+            "pune, maharashtra": {"latitude": 18.5204, "longitude": 73.8567},
+            "ahmedabad, gujarat": {"latitude": 23.0225, "longitude": 72.5714},
+            "dubai, uae": {"latitude": 25.2048, "longitude": 55.2708},
+            "london": {"latitude": 51.5074, "longitude": -0.1278},
+            "paris": {"latitude": 48.8566, "longitude": 2.3522},
+            "singapore": {"latitude": 1.3521, "longitude": 103.8198},
+            "bangkok, thailand": {"latitude": 13.7563, "longitude": 100.5018}
+        }
+        
+        # Get destination configuration from mapping, fallback to Mumbai
+        dest_config = destination_mapping.get(destination.lower(), {"latitude": 19.0760, "longitude": 72.8777})
+        latitude = dest_config["latitude"]
+        longitude = dest_config["longitude"]
+        
+        logging.info(f"Searching hotels for destination: {destination} -> lat: {latitude}, lng: {longitude}")
+        hotel_data = await hotel_agent.search_hotels(
+            latitude=latitude,
+            longitude=longitude,
+            checkin=check_in,
+            checkout=check_out,
+            adults=adults,
+            radius=50  # 50km radius
+        )
+        
+        logging.info(f"Hotel search result: {hotel_data}")
+        
+        # Check if we have hotel data from Amadeus API
+        hotels = hotel_data.get("data", []) if hotel_data.get("data") else []
+        
+        # No fallback needed - API is working and returning real data
+        
+        # Format the response for frontend
+        formatted_response = {
+            "success": True,
+            "hotels": hotels,
+            "meta": hotel_data.get("meta", {}),
+            "search_params": {
+                "destination": destination,
+                "check_in": check_in,
+                "check_out": check_out,
+                "rooms": rooms,
+                "adults": adults,
+                "children": children
+            },
+            "message": f"Found {len(hotels)} hotels for {destination}" if hotels else f"No hotels available for {destination} on the selected dates"
+        }
+        
+        return formatted_response
+        
+    except Exception as e:
+        logging.error(f"Hotel search API error: {e}")
+        return {
+            "success": False,
+            "error": str(e),
+            "hotels": []
+        }

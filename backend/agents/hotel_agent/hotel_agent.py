@@ -7,47 +7,130 @@ import logging
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
 
-BOOKING_API_KEY = os.getenv("BOOKING_API_KEY")  # Add this to your .env if using RapidAPI
+AMADEUS_API_KEY = os.getenv("AMADEUS_API_KEY")
+AMADEUS_API_SECRET = os.getenv("AMADEUS_API_SECRET")
 
 class HotelAgent:
     def __init__(self):
-        # Correct RapidAPI endpoint for Booking.com hotel search
-        self.search_url = "https://booking-com15.p.rapidapi.com/api/v1/hotels/searchHotels"
-        self.api_key = BOOKING_API_KEY
+        # Amadeus Hotels API endpoints
+        self.token_url = "https://test.api.amadeus.com/v1/security/oauth2/token"
+        self.search_url = "https://test.api.amadeus.com/v1/reference-data/locations/hotels/by-geocode"
+        self.offers_url = "https://test.api.amadeus.com/v3/shopping/hotel-offers"
+        self.api_key = AMADEUS_API_KEY
+        self.api_secret = AMADEUS_API_SECRET
+        self.access_token = None
+        
+        # Safe logging of API key
+        if self.api_key:
+            logging.info(f"HotelAgent initialized with Amadeus API key: {self.api_key[:5]}...")
+        else:
+            logging.warning("HotelAgent initialized with missing Amadeus API key!")
 
-    # Removed duplicate/old method signature
-    async def search_hotels(self, dest_id, search_type, arrival_date, departure_date, adults=1, children_age="0,17", room_qty=1, page_number=1, price_min=0, price_max=0, sort_by=None, categories_filter=None, units="metric", temperature_unit="c", languagecode="en-us", currency_code="AED", location="US"):
-        headers = {
-            "X-RapidAPI-Key": self.api_key,
-            "X-RapidAPI-Host": "booking-com15.p.rapidapi.com"
-        }
-        params = {
-            "dest_id": dest_id,
-            "search_type": search_type,
-            "arrival_date": arrival_date,
-            "departure_date": departure_date,
-            "adults": adults,
-            "children_age": children_age,
-            "room_qty": room_qty,
-            "page_number": page_number,
-            "price_min": price_min,
-            "price_max": price_max,
-            "sort_by": sort_by,
-            "categories_filter": categories_filter,
-            "units": units,
-            "temperature_unit": temperature_unit,
-            "languagecode": languagecode,
-            "currency_code": currency_code,
-            "location": location
-        }
+    async def authenticate(self):
+        """Authenticate with Amadeus API"""
+        if not self.api_key or not self.api_secret:
+            error_msg = "Missing Amadeus API credentials. Check your .env file."
+            logging.error(error_msg)
+            return {"error": error_msg}
+            
+        data = (
+            f"grant_type=client_credentials&client_id={self.api_key}&client_secret={self.api_secret}"
+        )
+        headers = {"Content-Type": "application/x-www-form-urlencoded"}
         try:
-            async with httpx.AsyncClient(timeout=15) as client:
-                response = await client.get(self.search_url, headers=headers, params=params)
-                logging.info(f"Booking.com hotel search response: {response.status_code} {response.text}")
+            logging.info(f"Authenticating with Amadeus API for hotels")
+            async with httpx.AsyncClient(timeout=30) as client:
+                response = await client.post(self.token_url, data=data, headers=headers)
+                logging.info(f"Amadeus auth response: {response.status_code}")
+                
                 if response.status_code == 200:
-                    return response.json()
+                    token_data = response.json()
+                    self.access_token = token_data["access_token"]
+                    logging.info(f"Authentication successful, token received")
+                    return token_data
                 else:
-                    raise HTTPException(status_code=response.status_code, detail=f"Hotel search failed: {response.text}")
+                    error_msg = f"Amadeus authentication failed: {response.text}"
+                    logging.error(error_msg)
+                    return {"error": error_msg}
         except Exception as e:
-            logging.error(f"Hotel search error: {e}")
-            raise HTTPException(status_code=500, detail=f"Hotel search exception: {str(e)}")
+            error_msg = f"Amadeus authentication error: {str(e)}"
+            logging.error(error_msg)
+            return {"error": error_msg}
+
+    async def search_hotels(self, latitude, longitude, checkin, checkout, adults=2, radius=50):
+        """Search hotels using Amadeus API"""
+        try:
+            if not self.access_token:
+                logging.info("No access token found, authenticating first")
+                auth_result = await self.authenticate()
+                if "error" in auth_result:
+                    return {"data": [], "error": auth_result["error"]}
+                
+            logging.info(f"Searching hotels near lat={latitude}, lng={longitude} from {checkin} to {checkout}")
+            headers = {"Authorization": f"Bearer {self.access_token}"}
+            
+            # First, get hotels by geocode
+            params = {
+                "latitude": latitude,
+                "longitude": longitude,
+                "radius": radius,
+                "radiusUnit": "KM"
+            }
+            
+            async with httpx.AsyncClient(timeout=30) as client:
+                # Step 1: Get hotel IDs by location
+                logging.info(f"Getting hotels by geocode: {params}")
+                response = await client.get(self.search_url, headers=headers, params=params)
+                logging.info(f"Amadeus geocode response: {response.status_code}")
+                
+                if response.status_code != 200:
+                    if response.status_code == 401:
+                        # Token expired, re-authenticate
+                        logging.info("Token expired, re-authenticating")
+                        auth_result = await self.authenticate()
+                        if "error" in auth_result:
+                            return {"data": [], "error": auth_result["error"]}
+                        headers = {"Authorization": f"Bearer {self.access_token}"}
+                        response = await client.get(self.search_url, headers=headers, params=params)
+                    
+                    if response.status_code != 200:
+                        error_msg = f"Hotel geocode search failed: {response.text}"
+                        logging.error(error_msg)
+                        return {"data": [], "error": error_msg}
+                
+                geocode_result = response.json()
+                hotel_ids = [hotel["hotelId"] for hotel in geocode_result.get("data", [])[:10]]  # Limit to 10 hotels
+                
+                if not hotel_ids:
+                    logging.info("No hotels found in the specified area")
+                    return {"data": [], "message": "No hotels found in the specified area"}
+                
+                logging.info(f"Found {len(hotel_ids)} hotels: {hotel_ids}")
+                
+                # Step 2: Get hotel offers
+                offers_params = {
+                    "hotelIds": ",".join(hotel_ids),
+                    "checkInDate": checkin,
+                    "checkOutDate": checkout,
+                    "adults": adults,
+                    "currency": "INR"  # Use INR for Indian market
+                }
+                
+                logging.info(f"Getting hotel offers: {offers_params}")
+                response = await client.get(self.offers_url, headers=headers, params=offers_params)
+                logging.info(f"Amadeus offers response: {response.status_code}")
+                
+                if response.status_code == 200:
+                    result = response.json()
+                    hotel_count = len(result.get("data", []))
+                    logging.info(f"Found {hotel_count} hotels with offers")
+                    return result
+                else:
+                    error_msg = f"Hotel offers search failed: {response.text}"
+                    logging.error(error_msg)
+                    return {"data": [], "error": error_msg}
+                    
+        except Exception as e:
+            error_msg = f"Hotel search exception: {str(e)}"
+            logging.error(error_msg)
+            return {"data": [], "error": error_msg}
