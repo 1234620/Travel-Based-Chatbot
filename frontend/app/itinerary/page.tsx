@@ -21,7 +21,7 @@ const initialMessages: Message[] = [
   {
     id: "1",
     content:
-      "Hello! I'm your AI travel assistant. I can help you plan the perfect itinerary for your next adventure. Where would you like to go?",
+      "Hello! I'm your AI travel assistant powered by advanced RAG technology. I can help you plan the perfect itinerary for your next adventure using my comprehensive travel database. Where would you like to go?",
     sender: "ai",
     timestamp: new Date(),
     suggestions: [
@@ -47,6 +47,7 @@ export default function ItineraryPage() {
   const [messages, setMessages] = useState<Message[]>(initialMessages)
   const [inputValue, setInputValue] = useState("")
   const [isTyping, setIsTyping] = useState(false)
+  const [isConnected, setIsConnected] = useState(true)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = () => {
@@ -71,18 +72,68 @@ export default function ItineraryPage() {
     setInputValue("")
     setIsTyping(true)
 
-    // Simulate AI response
-    setTimeout(() => {
+    try {
+      // Call the RAG API
+      const response = await fetch('http://127.0.0.1:8000/rag', {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        // Convert query to URL parameter
+      })
+      
+      // Create URL with query parameter
+      const url = new URL('http://127.0.0.1:8000/rag')
+      url.searchParams.append('query', content)
+      
+      const ragResponse = await fetch(url.toString(), {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (!ragResponse.ok) {
+        throw new Error(`HTTP error! status: ${ragResponse.status}`)
+      }
+
+      const data = await ragResponse.json()
+      
+      // Format the RAG response
+      let aiContent = data.itinerary || "I'm sorry, I couldn't generate an itinerary at this time."
+      
+      // If there's an error, show a helpful message
+      if (data.error) {
+        aiContent = `I encountered an issue: ${data.error}. Here's a general response based on your query: ${generateAIResponse(content)}`
+      }
+
       const aiResponse: Message = {
         id: (Date.now() + 1).toString(),
-        content: generateAIResponse(content),
+        content: aiContent,
         sender: "ai",
         timestamp: new Date(),
         suggestions: generateSuggestions(content),
       }
+      
       setMessages((prev) => [...prev, aiResponse])
+      setIsConnected(true)
+    } catch (error) {
+      console.error('Error calling RAG API:', error)
+      setIsConnected(false)
+      
+      // Fallback to mock response if RAG fails
+      const aiResponse: Message = {
+        id: (Date.now() + 1).toString(),
+        content: `I'm having trouble connecting to my travel database right now. ${generateAIResponse(content)}`,
+        sender: "ai",
+        timestamp: new Date(),
+        suggestions: generateSuggestions(content),
+      }
+      
+      setMessages((prev) => [...prev, aiResponse])
+    } finally {
       setIsTyping(false)
-    }, 1500)
+    }
   }
 
   const generateAIResponse = (userInput: string): string => {
@@ -135,6 +186,13 @@ export default function ItineraryPage() {
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto text-pretty">
             Let our AI travel assistant create the perfect personalized itinerary for your next adventure
           </p>
+          {/* Connection Status */}
+          <div className="flex items-center justify-center gap-2 mt-4">
+            <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
+            <span className="text-sm text-muted-foreground">
+              {isConnected ? 'Connected to AI Travel Assistant' : 'Using offline mode'}
+            </span>
+          </div>
         </div>
 
         {/* Quick Actions */}

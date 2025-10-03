@@ -3,10 +3,19 @@ import logging
 from typing import List, Dict, Any, Optional
 import json
 from datetime import datetime, timedelta
+from dotenv import load_dotenv
+
+# Load environment variables from .env file (project root)
+# __file__ is in backend/agents/rag_agent/rag_agent.py
+# Go up 3 levels: rag_agent -> agents -> backend -> project root
+env_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__)))), '.env')
+load_dotenv(dotenv_path=env_path)
 
 from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_aws import BedrockEmbeddings, BedrockLLM
+from langchain_openai import OpenAIEmbeddings, ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain.chains import RetrievalQA
 from langchain.prompts import PromptTemplate
@@ -18,8 +27,10 @@ logger = logging.getLogger(__name__)
 class RAGAgent:
     def __init__(self,
                  local_pdf_path: Optional[str] = None,
-                 aws_profile: str = "default"):
+                 aws_profile: str = "default",
+                 use_gemini: bool = True):
         self.aws_profile = aws_profile
+        self.use_gemini = use_gemini
         # Use local itinerary PDF (e.g., Holiday_Itinerary_Book.pdf)
         self.local_pdf_path = local_pdf_path or os.path.join(os.getcwd(), "Holiday_Itinerary_Book.pdf")
         
@@ -43,24 +54,46 @@ class RAGAgent:
                 chunk_overlap=20
             )
 
-            self.embeddings = BedrockEmbeddings(
-                credentials_profile_name=self.aws_profile,
-                model_id='amazon.titan-embed-text-v1'
-            )
+            if self.use_gemini:
+                # Use Google Gemini for embeddings and LLM
+                gemini_api_key = os.getenv("gemini_api_key") or os.getenv("GEMINI_API_KEY")
+                if not gemini_api_key or gemini_api_key == "your_gemini_api_key_here":
+                    raise ValueError(f"Gemini API key not set in environment variables. Checked: gemini_api_key={os.getenv('gemini_api_key')}, GEMINI_API_KEY={os.getenv('GEMINI_API_KEY')}")
+                
+                # Use text-embedding-004 which is available in the free tier
+                self.embeddings = GoogleGenerativeAIEmbeddings(
+                    google_api_key=gemini_api_key,
+                    model="models/text-embedding-004"
+                )
 
-            self.llm = BedrockLLM(
-                credentials_profile_name=self.aws_profile,
-                model='amazon.titan-text-lite-v1',
-                model_kwargs={
-                    "maxTokenCount": 3000,
-                    "temperature": 0.1,
-                    "topP": 0.9
-                }
-            )
+                self.llm = ChatGoogleGenerativeAI(
+                    google_api_key=gemini_api_key,
+                    model="gemini-2.5-flash",
+                    temperature=0.7,
+                    max_tokens=4000
+                )
+                logger.info("Initialized with Google Gemini 2.5 Flash")
+            else:
+                # Fallback to AWS Bedrock
+                self.embeddings = BedrockEmbeddings(
+                    credentials_profile_name=self.aws_profile,
+                    model_id='amazon.titan-embed-text-v1'
+                )
+
+                self.llm = BedrockLLM(
+                    credentials_profile_name=self.aws_profile,
+                    model='amazon.titan-text-lite-v1',
+                    model_kwargs={
+                        "maxTokenCount": 3000,
+                        "temperature": 0.1,
+                        "topP": 0.9
+                    }
+                )
+                logger.info("Initialized with AWS Bedrock")
         except Exception as e:
-            logger.warning(f"Failed to initialize Bedrock components: {e}")
+            logger.warning(f"Failed to initialize AI components: {e}")
             self.initialization_error = str(e)
-            # Continue without Bedrock - we'll use fallback responses
+            # Continue without AI - we'll use fallback responses
 
         # Initialize vector store with error handling
         try:
@@ -71,21 +104,23 @@ class RAGAgent:
             self.vectorstore = None
             self.retriever = None
 
-        # Prompt to allow augmentation beyond retrieved context, clearly marking augmented content
+        # Enhanced prompt optimized for GPT-5
         self.qa_prompt = PromptTemplate(
             input_variables=["context", "question"],
             template=(
-                "You are a helpful travel assistant.\n"
-                "You are given context from a user's holiday itinerary and may also use your own general knowledge to add helpful, relevant details.\n"
-                "Requirements:\n"
-                "- First, answer grounded in the provided context when available.\n"
-                "- Then, augment with additional helpful suggestions from your own knowledge.\n"
-                "- Clearly separate sections as 'Grounded from Itinerary' and 'Augmented Suggestions'.\n"
-                "- Do not invent specific facts (prices/schedules) unless commonly known and generic.\n"
-                "- Keep the tone concise and actionable.\n\n"
-                "Context:\n{context}\n\n"
-                "Question: {question}\n\n"
-                "Provide a structured answer with headings." 
+                "You are an expert travel assistant with comprehensive knowledge of destinations worldwide. "
+                "Create detailed, personalized travel itineraries based on the user's request.\n\n"
+                "Context from travel database:\n{context}\n\n"
+                "User Request: {question}\n\n"
+                "Instructions:\n"
+                "1. Create a comprehensive, day-by-day itinerary based on the user's specific request\n"
+                "2. Include practical details like transportation, timing, and costs where relevant\n"
+                "3. Add cultural insights, local tips, and must-see attractions\n"
+                "4. Consider the user's preferences (budget/luxury, cultural/adventure, etc.)\n"
+                "5. Provide specific restaurant and activity recommendations\n"
+                "6. Include travel tips, weather considerations, and local customs\n"
+                "7. Make the itinerary actionable with clear daily schedules\n\n"
+                "Format your response as a detailed travel itinerary with clear sections and bullet points."
             ),
         )
 
@@ -154,38 +189,57 @@ class RAGAgent:
     
     def _format_hotel_info(self) -> str:
         """Format hotel data for inclusion in itinerary"""
-        if not self.hotel_data or not self.hotel_data.get('data', {}).get('hotels'):
+        if not self.hotel_data or not self.hotel_data.get('data'):
             return "No hotel information available."
         
-        hotels = self.hotel_data['data']['hotels'][:5]  # Get top 5 hotels
+        # Handle both list and dict formats
+        hotels_data = self.hotel_data.get('data', [])
+        if isinstance(hotels_data, dict):
+            hotels = hotels_data.get('hotels', [])[:5]
+        else:
+            hotels = hotels_data[:5] if isinstance(hotels_data, list) else []
+        
+        if not hotels:
+            return "No hotel information available."
+        
         hotel_info = ""
         
         for i, hotel in enumerate(hotels, 1):
             property_info = hotel.get('property', {})
-            name = property_info.get('name', 'N/A')
-            rating = property_info.get('reviewScore', 'N/A')
-            review_count = property_info.get('reviewCount', 0)
+            name = property_info.get('name', hotel.get('name', 'N/A'))
+            rating = property_info.get('reviewScore', hotel.get('rating', 'N/A'))
+            review_count = property_info.get('reviewCount', hotel.get('reviewCount', 0))
             price_breakdown = property_info.get('priceBreakdown', {})
-            gross_price = price_breakdown.get('grossPrice', {})
+            gross_price = price_breakdown.get('grossPrice', hotel.get('price', {}))
             price = gross_price.get('value', 'N/A')
             currency = gross_price.get('currency', 'USD')
             quality_class = property_info.get('qualityClass', 0)
             
+            # Convert to numeric types safely
+            try:
+                rating_num = float(rating) if rating != 'N/A' else 0
+                review_count_num = int(review_count) if review_count else 0
+                quality_class_num = int(quality_class) if quality_class else 0
+            except (ValueError, TypeError):
+                rating_num = 0
+                review_count_num = 0
+                quality_class_num = 0
+            
             # Format rating
-            if rating != 'N/A' and rating > 0:
-                rating_text = f"{rating}/10"
-                if review_count > 0:
-                    rating_text += f" ({review_count} reviews)"
+            if rating_num > 0:
+                rating_text = f"{rating_num}/10"
+                if review_count_num > 0:
+                    rating_text += f" ({review_count_num} reviews)"
             else:
                 rating_text = "No rating available"
             
             # Format quality class
-            stars = "⭐" * min(quality_class, 5) if quality_class > 0 else ""
+            stars = "⭐" * min(quality_class_num, 5) if quality_class_num > 0 else ""
             
             hotel_info += f"**{i}. {name}**\n"
             hotel_info += f"   {stars} {rating_text}\n"
             hotel_info += f"   💰 {price} {currency} per night\n"
-            hotel_info += f"   🏨 Quality: {quality_class} stars\n\n"
+            hotel_info += f"   🏨 Quality: {quality_class_num} stars\n\n"
         
         return hotel_info
 
@@ -231,10 +285,6 @@ class RAGAgent:
 
     async def generate_itinerary(self, query: str) -> Dict[str, Any]:
         try:
-            # Check if Bedrock is available
-            if self.initialization_error or not self.qa_chain:
-                return self._generate_fallback_itinerary(query)
-            
             # Create enhanced query with flight and hotel data
             enhanced_query = query
             
@@ -248,17 +298,41 @@ class RAGAgent:
                 hotel_info = self._format_hotel_info()
                 enhanced_query += f"\n\nHotel Information:\n{hotel_info}"
             
-            # Generate itinerary using the enhanced query
-            result = self.qa_chain({"query": enhanced_query})
-            answer = result.get("result", "")
-            
-            # Extract sources
-            sources = []
-            for d in result.get("source_documents", [])[:3]:
-                meta = d.metadata or {}
-                page = meta.get("page", "")
-                source = meta.get("source", "") or meta.get("file_path", "")
-                sources.append(f"{source}#page={page}" if page != "" else source)
+            # If we have Gemini LLM but QA chain failed (due to embedding quota), use LLM directly
+            if self.llm and not self.qa_chain:
+                logger.info("Using Gemini LLM directly (QA chain not available)")
+                prompt = (
+                    "You are an expert travel assistant with comprehensive knowledge of destinations worldwide. "
+                    "Create detailed, personalized travel itineraries based on the user's request.\n\n"
+                    f"User Request: {enhanced_query}\n\n"
+                    "Instructions:\n"
+                    "1. Create a comprehensive, day-by-day itinerary based on the user's specific request\n"
+                    "2. Include practical details like transportation, timing, and costs where relevant\n"
+                    "3. Add cultural insights, local tips, and must-see attractions\n"
+                    "4. Consider the user's preferences (budget/luxury, cultural/adventure, etc.)\n"
+                    "5. Provide specific restaurant and activity recommendations\n"
+                    "6. Include travel tips, weather considerations, and local customs\n"
+                    "7. Make the itinerary actionable with clear daily schedules\n"
+                    "8. If flight and hotel information is provided, integrate it naturally into the itinerary\n\n"
+                    "Format your response as a detailed travel itinerary with clear sections and bullet points."
+                )
+                answer = self.llm.invoke(prompt).content
+                sources = []
+            elif self.qa_chain:
+                # Use QA chain with RAG if available
+                logger.info("Using QA chain with RAG retrieval")
+                result = self.qa_chain({"query": enhanced_query})
+                answer = result.get("result", "")
+                # Extract sources
+                sources = []
+                for d in result.get("source_documents", [])[:3]:
+                    meta = d.metadata or {}
+                    page = meta.get("page", "")
+                    source = meta.get("source", "") or meta.get("file_path", "")
+                    sources.append(f"{source}#page={page}" if page != "" else source)
+            else:
+                # Fallback if no LLM available
+                return self._generate_fallback_itinerary(query)
             
             # Extract location and preferences from the query
             location = self._extract_location(query)
@@ -336,69 +410,207 @@ class RAGAgent:
         
         return preferences
 
+    def _extract_duration(self, query: str) -> int:
+        """Extract trip duration from query"""
+        query_lower = query.lower()
+        
+        # Look for duration keywords
+        if any(word in query_lower for word in ['weekend', '2-day', 'two day']):
+            return 2
+        elif any(word in query_lower for word in ['3-day', 'three day', '3 days']):
+            return 3
+        elif any(word in query_lower for word in ['4-day', 'four day', '4 days']):
+            return 4
+        elif any(word in query_lower for word in ['5-day', 'five day', '5 days']):
+            return 5
+        elif any(word in query_lower for word in ['week', '7-day', 'seven day', '7 days']):
+            return 7
+        elif any(word in query_lower for word in ['10-day', 'ten day', '10 days']):
+            return 10
+        elif any(word in query_lower for word in ['2 weeks', 'two weeks', '14 days']):
+            return 14
+        else:
+            return 5  # Default to 5 days
+
+    def _get_location_specific_content(self, location: str) -> Dict[str, str]:
+        """Get location-specific content and tips"""
+        if not location or location == "Not specified":
+            return {"intro": "", "tips": ""}
+        
+        location_data = {
+            "Tokyo, Japan": {
+                "intro": "Tokyo is a vibrant metropolis blending ancient traditions with cutting-edge technology. Experience everything from serene temples to bustling neon-lit districts.",
+                "tips": "• Use JR Pass for unlimited train travel\n• Try street food in Tsukiji Outer Market\n• Visit during cherry blossom season (March-April)\n• Learn basic Japanese phrases"
+            },
+            "Paris, France": {
+                "intro": "The City of Light offers world-class art, cuisine, and architecture. From the Eiffel Tower to charming cafes, Paris is perfect for romance and culture.",
+                "tips": "• Purchase a Paris Pass for museum access\n• Try authentic croissants and café au lait\n• Visit during spring (April-June) for best weather\n• Learn basic French greetings"
+            },
+            "New York, USA": {
+                "intro": "The Big Apple never sleeps! Experience Broadway shows, world-famous landmarks, diverse neighborhoods, and incredible food from around the globe.",
+                "tips": "• Get a MetroCard for subway transportation\n• Try pizza in Brooklyn and bagels in Manhattan\n• Visit during fall (September-November) for pleasant weather\n• Book Broadway shows in advance"
+            },
+            "London, UK": {
+                "intro": "Rich in history and culture, London offers royal palaces, world-class museums, and charming pubs. Experience both tradition and modernity.",
+                "tips": "• Get an Oyster card for public transport\n• Try traditional fish and chips\n• Visit during summer (June-August) for best weather\n• Book attractions like London Eye in advance"
+            },
+            "Dubai, UAE": {
+                "intro": "A futuristic city in the desert, Dubai offers luxury shopping, world-class architecture, and unique desert experiences.",
+                "tips": "• Visit during winter (November-March) to avoid extreme heat\n• Try authentic Emirati cuisine\n• Book desert safari experiences\n• Respect local customs and dress modestly"
+            },
+            "Bangkok, Thailand": {
+                "intro": "A city of contrasts with ancient temples, bustling markets, and vibrant street food culture. Experience authentic Thai hospitality.",
+                "tips": "• Use tuk-tuks and river boats for transportation\n• Try street food (pad thai, mango sticky rice)\n• Visit during cool season (November-February)\n• Bargain at markets but be respectful"
+            },
+            "Mumbai, India": {
+                "intro": "India's financial capital offers a mix of colonial architecture, Bollywood glamour, and incredible street food. Experience the energy of Maximum City.",
+                "tips": "• Try local street food (vada pav, bhel puri)\n• Visit during winter (October-March) for pleasant weather\n• Use local trains and taxis for transportation\n• Book hotels in advance during peak season"
+            }
+        }
+        
+        return location_data.get(location, {"intro": "", "tips": ""})
+
+    def _generate_daily_plans(self, location: str, preferences: List[str], duration: int, location_specific: Dict[str, str]) -> str:
+        """Generate dynamic daily plans based on location and preferences"""
+        plans = ""
+        
+        # Define activity types based on preferences
+        cultural_activities = ["Visit museums and cultural sites", "Explore historical landmarks", "Take guided walking tours", "Attend local performances"]
+        adventure_activities = ["Outdoor activities and nature exploration", "Adventure sports and hiking", "Water activities", "Mountain or beach exploration"]
+        luxury_activities = ["Fine dining experiences", "Luxury spa treatments", "Premium shopping", "Exclusive cultural events"]
+        budget_activities = ["Free walking tours", "Local market exploration", "Public parks and gardens", "Street food experiences"]
+        
+        # Generate activities based on preferences
+        if "cultural" in preferences:
+            primary_activities = cultural_activities
+        elif "adventure" in preferences:
+            primary_activities = adventure_activities
+        elif "luxury" in preferences:
+            primary_activities = luxury_activities
+        elif "budget" in preferences:
+            primary_activities = budget_activities
+        else:
+            primary_activities = cultural_activities + adventure_activities[:2]  # Mix for general travel
+        
+        # Generate daily plans
+        for day in range(1, duration + 1):
+            plans += f"**Day {day}:**\n"
+            
+            if day == 1:
+                plans += "• Arrive at destination airport\n"
+                plans += "• Check into your hotel\n"
+                plans += "• Explore the local area and get oriented\n"
+                plans += "• Enjoy a welcome dinner\n\n"
+            elif day == duration:
+                plans += "• Final shopping or sightseeing\n"
+                plans += "• Check out from hotel\n"
+                plans += "• Transfer to airport\n"
+                plans += "• Depart for home\n\n"
+            else:
+                # Vary activities for middle days
+                activity_index = (day - 2) % len(primary_activities)
+                primary_activity = primary_activities[activity_index]
+                
+                plans += f"• {primary_activity}\n"
+                plans += "• Experience local cuisine and culture\n"
+                plans += "• Explore unique neighborhood attractions\n"
+                plans += "• Relax and enjoy evening entertainment\n\n"
+        
+        return plans
+
+    def _get_preference_tips(self, preferences: List[str], location: str) -> str:
+        """Get preference-specific recommendations"""
+        tips = []
+        
+        if "luxury" in preferences:
+            tips.append("• Book premium hotels and restaurants in advance")
+            tips.append("• Consider private tours and experiences")
+            tips.append("• Look for VIP access to popular attractions")
+        
+        if "budget" in preferences:
+            tips.append("• Use public transportation and walking")
+            tips.append("• Eat at local markets and street food stalls")
+            tips.append("• Look for free walking tours and museum days")
+        
+        if "cultural" in preferences:
+            tips.append("• Book museum passes for multiple attractions")
+            tips.append("• Research local festivals and cultural events")
+            tips.append("• Learn basic phrases in the local language")
+        
+        if "adventure" in preferences:
+            tips.append("• Pack appropriate gear for outdoor activities")
+            tips.append("• Book adventure tours and experiences")
+            tips.append("• Check weather conditions and safety requirements")
+        
+        if "romantic" in preferences:
+            tips.append("• Book romantic restaurants and experiences")
+            tips.append("• Consider sunset tours and scenic viewpoints")
+            tips.append("• Look for couples' spa packages")
+        
+        if "family" in preferences:
+            tips.append("• Choose family-friendly accommodations")
+            tips.append("• Plan activities suitable for all ages")
+            tips.append("• Book attractions with family packages")
+        
+        return "\n".join(tips) if tips else ""
+
     def _generate_fallback_itinerary(self, query: str) -> Dict[str, Any]:
-        """Generate a basic itinerary when Bedrock is not available"""
+        """Generate a dynamic itinerary when Bedrock is not available"""
         logger.info("Using fallback itinerary generation (Bedrock not available)")
         
         # Extract basic information
         location = self._extract_location(query)
         preferences = self._extract_preferences(query)
         
+        # Determine trip duration from query
+        duration = self._extract_duration(query)
+        
+        # Create location-specific content
+        location_specific = self._get_location_specific_content(location)
+        
         # Create a comprehensive itinerary
-        itinerary = f"🌍 **Complete Travel Plan for {location or 'your destination'}**\n\n"
+        itinerary = f"**Complete Travel Plan for {location or 'your destination'}**\n\n"
         
         # Add flight information if available
         if self.flight_data and self.flight_data.get('data'):
             flight_info = self._format_flight_info()
-            itinerary += f"✈️ **Available Flights:**\n{flight_info}\n\n"
+            itinerary += f"**Available Flights:**\n{flight_info}\n\n"
         
         # Add hotel information if available
-        if self.hotel_data and self.hotel_data.get('data', {}).get('hotels'):
+        if self.hotel_data and self.hotel_data.get('data'):
             hotel_info = self._format_hotel_info()
-            itinerary += f"🏨 **Available Hotels:**\n{hotel_info}\n\n"
+            itinerary += f"**Available Hotels:**\n{hotel_info}\n\n"
+        
+        # Add location-specific introduction
+        if location_specific['intro']:
+            itinerary += f"**About {location}:**\n{location_specific['intro']}\n\n"
         
         # Add detailed itinerary suggestions
-        itinerary += "📅 **5-Day Itinerary:**\n\n"
-        itinerary += "**Day 1: Arrival & Orientation**\n"
-        itinerary += "• Arrive at destination airport\n"
-        itinerary += "• Check into your hotel\n"
-        itinerary += "• Explore the local area\n"
-        itinerary += "• Enjoy a welcome dinner\n\n"
+        itinerary += f"**{duration}-Day Itinerary:**\n\n"
         
-        itinerary += "**Day 2: City Exploration**\n"
-        itinerary += "• Visit major landmarks and attractions\n"
-        itinerary += "• Take a city tour or hop-on-hop-off bus\n"
-        itinerary += "• Explore local markets and shopping areas\n"
-        itinerary += "• Experience local cuisine\n\n"
-        
-        itinerary += "**Day 3: Cultural Immersion**\n"
-        itinerary += "• Visit museums and cultural sites\n"
-        itinerary += "• Take a guided walking tour\n"
-        itinerary += "• Attend local events or performances\n"
-        itinerary += "• Try authentic local experiences\n\n"
-        
-        itinerary += "**Day 4: Adventure & Relaxation**\n"
-        itinerary += "• Outdoor activities or nature exploration\n"
-        itinerary += "• Beach time or park visits\n"
-        itinerary += "• Spa treatments or relaxation\n"
-        itinerary += "• Evening entertainment\n\n"
-        
-        itinerary += "**Day 5: Departure**\n"
-        itinerary += "• Final shopping or sightseeing\n"
-        itinerary += "• Check out from hotel\n"
-        itinerary += "• Transfer to airport\n"
-        itinerary += "• Depart for home\n\n"
+        # Generate dynamic daily plans based on location and preferences
+        daily_plans = self._generate_daily_plans(location, preferences, duration, location_specific)
+        itinerary += daily_plans
         
         if preferences:
-            itinerary += f"🎯 **Your Preferences:** {', '.join(preferences)}\n\n"
+            itinerary += f"**Your Preferences:** {', '.join(preferences)}\n\n"
+            
+            # Add preference-specific recommendations
+            preference_tips = self._get_preference_tips(preferences, location)
+            if preference_tips:
+                itinerary += f"**Personalized Recommendations:**\n{preference_tips}\n\n"
         
-        itinerary += "💡 **Travel Tips:**\n"
+        # Add location-specific tips
+        if location_specific['tips']:
+            itinerary += f"**{location} Travel Tips:**\n{location_specific['tips']}\n\n"
+        
+        itinerary += "**General Travel Tips:**\n"
         itinerary += "• Book flights and hotels in advance for better rates\n"
         itinerary += "• Check local weather and pack accordingly\n"
         itinerary += "• Research local customs and etiquette\n"
         itinerary += "• Keep important documents and emergency contacts handy\n\n"
         
-        itinerary += "📞 **Need Help?** Contact us for booking assistance or itinerary modifications!"
+        itinerary += "**Need Help?** Contact us for booking assistance or itinerary modifications!"
         
         return {
             "itinerary": itinerary,

@@ -1,5 +1,10 @@
 import sys
 import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file (project root)
+load_dotenv(dotenv_path=os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env'))
+
 # Add the backend directory to Python path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
@@ -80,10 +85,46 @@ async def hotel_agent(
         raise HTTPException(status_code=500, detail=f"Hotel search failed: {str(e)}")
 
 @app.get("/rag")
-async def rag_agent(query: str = Query(..., description="Itinerary or hotel query")):
-    agent = RAGAgent()
-    result = await agent.generate_itinerary(query)
-    return result
+async def rag_agent(
+    query: str = Query(..., description="Travel query for itinerary generation"),
+    include_flights: bool = Query(False, description="Include flight data in itinerary"),
+    include_hotels: bool = Query(False, description="Include hotel data in itinerary")
+):
+    """
+    Generate a travel itinerary using RAG agent
+    Example: /rag?query=Plan a 5-day luxury trip to Tokyo&include_flights=true&include_hotels=true
+    """
+    try:
+        agent = RAGAgent()
+        
+        # Check if initialization failed
+        if agent.initialization_error:
+            raise HTTPException(
+                status_code=500,
+                detail=f"RAG agent initialization failed: {agent.initialization_error}"
+            )
+        
+        # Generate itinerary
+        result = await agent.generate_itinerary(query)
+        
+        if "error" in result:
+            raise HTTPException(status_code=500, detail=result["error"])
+        
+        return {
+            "success": True,
+            "query": query,
+            "itinerary": result.get("itinerary"),
+            "location": result.get("location"),
+            "preferences": result.get("preferences"),
+            "sources": result.get("sources", []),
+            "flight_data": result.get("flight_data") if include_flights else None,
+            "hotel_data": result.get("hotel_data") if include_hotels else None
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logging.error(f"RAG endpoint error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"RAG agent exception: {str(e)}")
 
 @app.get("/rag/integrated")
 async def integrated_itinerary(
@@ -139,6 +180,26 @@ async def integrated_itinerary(
         result = await rag_agent.generate_itinerary(query)
         return result
         
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/rag/set-flight-data")
+async def set_flight_data_for_rag(flight_data: dict):
+    """Set flight data for RAG agent to use in itinerary generation"""
+    try:
+        agent = RAGAgent()
+        agent.set_flight_data(flight_data)
+        return {"success": True, "message": "Flight data set for RAG agent"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/rag/set-hotel-data")
+async def set_hotel_data_for_rag(hotel_data: dict):
+    """Set hotel data for RAG agent to use in itinerary generation"""
+    try:
+        agent = RAGAgent()
+        agent.set_hotel_data(hotel_data)
+        return {"success": True, "message": "Hotel data set for RAG agent"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

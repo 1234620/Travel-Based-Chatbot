@@ -7,15 +7,15 @@ import logging
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
 
-AMADEUS_API_KEY = os.getenv("AMADEUS_API_KEY")
-AMADEUS_API_SECRET = os.getenv("AMADEUS_API_SECRET")
+AMADEUS_API_KEY = os.getenv("AMADEUS_HOTEL_API_key")  # Use hotel-specific API key
+AMADEUS_API_SECRET = os.getenv("AMADEUS_HOTEL_API_SECRET")  # Use hotel-specific API secret
 
 class HotelAgent:
     def __init__(self):
-        # Amadeus Hotels API endpoints
-        self.token_url = "https://test.api.amadeus.com/v1/security/oauth2/token"
-        self.search_url = "https://test.api.amadeus.com/v1/reference-data/locations/hotels/by-geocode"
-        self.offers_url = "https://test.api.amadeus.com/v3/shopping/hotel-offers"
+        # Amadeus Hotels API endpoints - Try production first
+        self.token_url = "https://api.amadeus.com/v1/security/oauth2/token"
+        self.search_url = "https://api.amadeus.com/v1/reference-data/locations/hotels/by-geocode"
+        self.offers_url = "https://api.amadeus.com/v3/shopping/hotel-offers"
         self.api_key = AMADEUS_API_KEY
         self.api_secret = AMADEUS_API_SECRET
         self.access_token = None
@@ -112,7 +112,7 @@ class HotelAgent:
                     "hotelIds": ",".join(hotel_ids),
                     "checkInDate": checkin,
                     "checkOutDate": checkout,
-                    "adults": adults,
+            "adults": adults,
                     "currency": "INR"  # Use INR for Indian market
                 }
                 
