@@ -1,9 +1,20 @@
 import sys
 import os
 from dotenv import load_dotenv
+from pathlib import Path
 
 # Load environment variables from .env file (project root)
-load_dotenv(dotenv_path=os.path.join(os.path.dirname(os.path.dirname(__file__)), '.env'))
+# Get the project root directory (parent of backend)
+project_root = Path(__file__).parent.parent
+env_path = project_root / '.env'
+
+print(f"Loading .env from: {env_path}")
+print(f".env exists: {env_path.exists()}")
+
+load_dotenv(dotenv_path=env_path)
+
+# Verify environment variables are loaded
+print(f"GEMINI_API_KEY loaded: {os.getenv('GEMINI_API_KEY') is not None}")
 
 # Add the backend directory to Python path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -19,6 +30,7 @@ import asyncio
 import json
 import logging
 from datetime import datetime, timedelta
+import re
 
 app = FastAPI(title="NLP Multi-Agent Travel Chatbot", version="1.0.0")
 
@@ -34,11 +46,22 @@ app.add_middleware(
 # Initialize the orchestrator
 orchestrator = ChatbotOrchestrator()
 
+# Initialize RAG agent for chat endpoint
+rag_agent = None
+try:
+    rag_agent = RAGAgent()
+    logging.info("RAG agent initialized successfully")
+except Exception as e:
+    logging.error(f"Failed to initialize RAG agent: {e}")
+
 # Pydantic models for request/response
 class ChatMessage(BaseModel):
     message: str
     user_id: str = None
 
+class ChatRequest(BaseModel):
+    message: str
+    
 class ChatResponse(BaseModel):
     response: str
     intent_analysis: dict = None
@@ -109,6 +132,10 @@ async def rag_agent(
         
         if "error" in result:
             raise HTTPException(status_code=500, detail=result["error"])
+        
+        # Preprocess the itinerary markdown for better formatting
+        if "itinerary" in result:
+            result["itinerary"] = preprocess_markdown(result["itinerary"])
         
         return {
             "success": True,
@@ -221,15 +248,67 @@ async def get_itinerary(itinerary_id: str):
     result = await agent.get_itinerary_by_id(itinerary_id)
     return result
 
-# New chatbot endpoint
-@app.post("/chat", response_model=ChatResponse)
-async def chat_with_bot(chat_message: ChatMessage):
-    """Main chatbot endpoint that coordinates all agents"""
+def preprocess_markdown(text: str) -> str:
+    """Clean and format markdown text from Gemini for better frontend display"""
+    
+    # Remove excessive dashes/horizontal rules that don't render well
+    text = re.sub(r'^-{3,}$', '', text, flags=re.MULTILINE)
+    text = re.sub(r'^\*{3,}$', '', text, flags=re.MULTILINE)
+    
+    # Fix heading formatting - ensure space after # symbols
+    text = re.sub(r'^(#{1,6})([^\s#])', r'\1 \2', text, flags=re.MULTILINE)
+    
+    # Ensure proper spacing around headings
+    text = re.sub(r'\n(#{1,6}\s+[^\n]+)\n', r'\n\n\1\n\n', text)
+    
+    # Clean up multiple consecutive blank lines (max 2)
+    text = re.sub(r'\n{3,}', '\n\n', text)
+    
+    # Fix list formatting - ensure bullet points are properly formatted
+    text = re.sub(r'^\*\s+', '• ', text, flags=re.MULTILINE)
+    text = re.sub(r'^-\s+', '• ', text, flags=re.MULTILINE)
+    
+    # Ensure spacing before lists
+    text = re.sub(r'([^\n])\n(• )', r'\1\n\n\2', text)
+    
+    # Clean up bold formatting
+    text = re.sub(r'\*\*\*([^*]+)\*\*\*', r'**\1**', text)  # Triple asterisks to double
+    
+    # Add spacing after sections
+    text = re.sub(r'(\*\*[^*]+\*\*:)\s*\n', r'\1\n\n', text)
+    
+    # Remove trailing whitespace from lines
+    text = '\n'.join(line.rstrip() for line in text.split('\n'))
+    
+    # Trim overall
+    text = text.strip()
+    
+    return text
+
+@app.post("/chat")
+async def chat(request: ChatRequest):
+    """Chat endpoint using RAG agent"""
     try:
-        result = await orchestrator.process_message(chat_message.message, chat_message.user_id)
-        return ChatResponse(**result)
+        logging.info(f"Received chat request: {request.message}")
+        
+        if not rag_agent:
+            logging.error("RAG agent not initialized")
+            raise HTTPException(status_code=500, detail="RAG agent not initialized. Check server logs.")
+        
+        response = rag_agent.get_response(request.message)
+        
+        # Preprocess the markdown response for better formatting
+        response = preprocess_markdown(response)
+        
+        logging.info(f"Chat response generated successfully")
+        
+        return {"response": response}
+    except FileNotFoundError as e:
+        logging.error(f"PDF file not found: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Travel guide PDF not found: {str(e)}")
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logging.error(f"Error in chat endpoint: {str(e)}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Error processing chat: {str(e)}")
 
 @app.get("/conversation/{user_id}")
 async def get_conversation_history(user_id: str):

@@ -4,6 +4,7 @@ from typing import List, Dict, Any, Optional
 import json
 from datetime import datetime, timedelta
 from dotenv import load_dotenv
+from pathlib import Path
 
 # Load environment variables from .env file (project root)
 # __file__ is in backend/agents/rag_agent/rag_agent.py
@@ -104,23 +105,31 @@ class RAGAgent:
             self.vectorstore = None
             self.retriever = None
 
-        # Enhanced prompt optimized for GPT-5
+        # Enhanced prompt optimized for Gemini
         self.qa_prompt = PromptTemplate(
             input_variables=["context", "question"],
             template=(
-                "You are an expert travel assistant with comprehensive knowledge of destinations worldwide. "
-                "Create detailed, personalized travel itineraries based on the user's request.\n\n"
+                "You are an expert travel assistant creating detailed, well-structured travel itineraries.\n\n"
                 "Context from travel database:\n{context}\n\n"
                 "User Request: {question}\n\n"
-                "Instructions:\n"
-                "1. Create a comprehensive, day-by-day itinerary based on the user's specific request\n"
-                "2. Include practical details like transportation, timing, and costs where relevant\n"
-                "3. Add cultural insights, local tips, and must-see attractions\n"
-                "4. Consider the user's preferences (budget/luxury, cultural/adventure, etc.)\n"
-                "5. Provide specific restaurant and activity recommendations\n"
-                "6. Include travel tips, weather considerations, and local customs\n"
-                "7. Make the itinerary actionable with clear daily schedules\n\n"
-                "Format your response as a detailed travel itinerary with clear sections and bullet points."
+                "IMPORTANT FORMATTING RULES:\n"
+                "- Use simple, clean formatting\n"
+                "- Use single # for main titles (e.g., # Day 1: Tokyo Exploration)\n"
+                "- Use ## for section headers (e.g., ## Morning Activities)\n"
+                "- Use bullet points with • instead of asterisks\n"
+                "- Use bold **text** sparingly for emphasis\n"
+                "- Use emojis to make it visually appealing (🌅 🍽️ 🏨 ✈️ 🏖️ 🎯 💰 ⏰)\n"
+                "- Keep paragraphs short and scannable\n"
+                "- Use double line breaks between major sections\n\n"
+                "Create a comprehensive itinerary with:\n"
+                "1. Clear day-by-day breakdown with timings\n"
+                "2. Specific activity recommendations with details\n"
+                "3. Restaurant and dining suggestions\n"
+                "4. Transportation tips\n"
+                "5. Budget estimates where relevant\n"
+                "6. Cultural insights and local tips\n"
+                "7. Weather and packing recommendations\n\n"
+                "Make it practical, actionable, and visually organized."
             ),
         )
 
@@ -245,29 +254,30 @@ class RAGAgent:
 
     def _build_index(self):
         try:
-            if self.local_pdf_path and os.path.exists(self.local_pdf_path):
-                loader = PyPDFLoader(self.local_pdf_path)
-                docs = loader.load()
-                logger.info(f"Loaded PDF from: {self.local_pdf_path}")
-            else:
-                logger.warning(f"Local PDF not found at: {self.local_pdf_path}")
-                # Build from a small fallback text snippet to keep system usable
-                from langchain.schema import Document
-                docs = [Document(page_content=(
-                    "Welcome to the most comprehensive guide on Amazon Bedrock and Generative AI on AWS from a "
-                    "practising AWS Solution Architect and best-selling Udemy Instructor."))]
-
-            split_docs = self.text_splitter.split_documents(docs)
-            vectorstore = FAISS.from_documents(split_docs, self.embeddings)
-            logger.info("Vector index built with FAISS using Bedrock Titan embeddings")
-            return vectorstore
+            current_dir = Path(__file__).parent
+            pdf_path = current_dir / "holiday_itinerary_book.pdf"
+            
+            if not pdf_path.exists():
+                raise FileNotFoundError(f"PDF file not found at: {pdf_path}")
+            
+            logger.info(f"Loading PDF from: {pdf_path}")
+            
+            # Load and process the PDF
+            loader = PyPDFLoader(str(pdf_path))
+            docs = loader.load()
+            logger.info(f"Loaded PDF from: {pdf_path}")
         except Exception as e:
-            logger.error(f"Failed to build index: {e}")
-            # Return empty FAISS index as fallback
+            logger.warning(f"Local PDF not found at: {pdf_path}")
+            # Build from a small fallback text snippet to keep system usable
             from langchain.schema import Document
-            docs = [Document(page_content="Fallback content")]
-            split_docs = self.text_splitter.split_documents(docs)
-            return FAISS.from_documents(split_docs, self.embeddings)
+            docs = [Document(page_content=(
+                "Welcome to the most comprehensive guide on Amazon Bedrock and Generative AI on AWS from a "
+                "practising AWS Solution Architect and best-selling Udemy Instructor."))]
+
+        split_docs = self.text_splitter.split_documents(docs)
+        vectorstore = FAISS.from_documents(split_docs, self.embeddings)
+        logger.info("Vector index built with FAISS using Bedrock Titan embeddings")
+        return vectorstore
 
     async def retrieve_documents(self, query: str, top_k: int = 3) -> List[Dict[str, Any]]:
         try:
@@ -302,28 +312,34 @@ class RAGAgent:
             if self.llm and not self.qa_chain:
                 logger.info("Using Gemini LLM directly (QA chain not available)")
                 prompt = (
-                    "You are an expert travel assistant with comprehensive knowledge of destinations worldwide. "
-                    "Create detailed, personalized travel itineraries based on the user's request.\n\n"
+                    "You are an expert travel assistant creating detailed, well-structured travel itineraries.\n\n"
                     f"User Request: {enhanced_query}\n\n"
-                    "Instructions:\n"
-                    "1. Create a comprehensive, day-by-day itinerary based on the user's specific request\n"
-                    "2. Include practical details like transportation, timing, and costs where relevant\n"
-                    "3. Add cultural insights, local tips, and must-see attractions\n"
-                    "4. Consider the user's preferences (budget/luxury, cultural/adventure, etc.)\n"
-                    "5. Provide specific restaurant and activity recommendations\n"
-                    "6. Include travel tips, weather considerations, and local customs\n"
-                    "7. Make the itinerary actionable with clear daily schedules\n"
-                    "8. If flight and hotel information is provided, integrate it naturally into the itinerary\n\n"
-                    "Format your response as a detailed travel itinerary with clear sections and bullet points."
+                    "IMPORTANT FORMATTING RULES:\n"
+                    "- Use simple, clean formatting that looks good in a web interface\n"
+                    "- Use single # for main titles (e.g., # Day 1: Tokyo Exploration)\n"
+                    "- Use ## for section headers (e.g., ## Morning Activities)\n"
+                    "- Use bullet points with • instead of asterisks or dashes\n"
+                    "- Use bold **text** for important information\n"
+                    "- Use emojis to make it visually appealing (🌅 🍽️ 🏨 ✈️ 🏖️ 🎯 💰 ⏰)\n"
+                    "- Keep paragraphs short and scannable\n"
+                    "- Use double line breaks between major sections for readability\n\n"
+                    "Create a comprehensive, day-by-day itinerary including:\n"
+                    "1. Clear daily schedule with specific timings\n"
+                    "2. Detailed activity descriptions\n"
+                    "3. Restaurant and dining recommendations\n"
+                    "4. Transportation options and tips\n"
+                    "5. Budget estimates per activity/meal\n"
+                    "6. Cultural insights and local customs\n"
+                    "7. Weather considerations and packing tips\n"
+                    "8. If flight and hotel information is provided, integrate it naturally\n\n"
+                    "Make the itinerary practical, actionable, and visually appealing."
                 )
                 answer = self.llm.invoke(prompt).content
                 sources = []
             elif self.qa_chain:
-                # Use QA chain with RAG if available
                 logger.info("Using QA chain with RAG retrieval")
                 result = self.qa_chain({"query": enhanced_query})
                 answer = result.get("result", "")
-                # Extract sources
                 sources = []
                 for d in result.get("source_documents", [])[:3]:
                     meta = d.metadata or {}
@@ -331,10 +347,8 @@ class RAGAgent:
                     source = meta.get("source", "") or meta.get("file_path", "")
                     sources.append(f"{source}#page={page}" if page != "" else source)
             else:
-                # Fallback if no LLM available
                 return self._generate_fallback_itinerary(query)
             
-            # Extract location and preferences from the query
             location = self._extract_location(query)
             preferences = self._extract_preferences(query)
             
@@ -351,10 +365,8 @@ class RAGAgent:
             return {"error": str(e), "itinerary": "An error occurred while generating your response."}
     
     def _extract_location(self, query: str) -> str:
-        """Extract location from query using simple keyword matching"""
         query_lower = query.lower()
         
-        # Common destination keywords
         destinations = {
             'paris': 'Paris, France',
             'london': 'London, UK',
@@ -380,21 +392,17 @@ class RAGAgent:
         return "Not specified"
     
     def _extract_preferences(self, query: str) -> List[str]:
-        """Extract travel preferences from query"""
         query_lower = query.lower()
         preferences = []
         
-        # Luxury indicators
         luxury_keywords = ['luxury', 'premium', '5-star', 'high-end', 'exclusive', 'deluxe']
         if any(keyword in query_lower for keyword in luxury_keywords):
             preferences.append('luxury')
         
-        # Budget indicators
         budget_keywords = ['budget', 'cheap', 'affordable', 'economy', 'low-cost']
         if any(keyword in query_lower for keyword in budget_keywords):
             preferences.append('budget')
         
-        # Activity preferences
         activity_keywords = {
             'beach': ['beach', 'coastal', 'seaside', 'ocean'],
             'cultural': ['cultural', 'museum', 'history', 'heritage', 'art'],
@@ -411,10 +419,8 @@ class RAGAgent:
         return preferences
 
     def _extract_duration(self, query: str) -> int:
-        """Extract trip duration from query"""
         query_lower = query.lower()
         
-        # Look for duration keywords
         if any(word in query_lower for word in ['weekend', '2-day', 'two day']):
             return 2
         elif any(word in query_lower for word in ['3-day', 'three day', '3 days']):
@@ -430,10 +436,9 @@ class RAGAgent:
         elif any(word in query_lower for word in ['2 weeks', 'two weeks', '14 days']):
             return 14
         else:
-            return 5  # Default to 5 days
+            return 5
 
     def _get_location_specific_content(self, location: str) -> Dict[str, str]:
-        """Get location-specific content and tips"""
         if not location or location == "Not specified":
             return {"intro": "", "tips": ""}
         
@@ -471,16 +476,13 @@ class RAGAgent:
         return location_data.get(location, {"intro": "", "tips": ""})
 
     def _generate_daily_plans(self, location: str, preferences: List[str], duration: int, location_specific: Dict[str, str]) -> str:
-        """Generate dynamic daily plans based on location and preferences"""
         plans = ""
         
-        # Define activity types based on preferences
         cultural_activities = ["Visit museums and cultural sites", "Explore historical landmarks", "Take guided walking tours", "Attend local performances"]
         adventure_activities = ["Outdoor activities and nature exploration", "Adventure sports and hiking", "Water activities", "Mountain or beach exploration"]
         luxury_activities = ["Fine dining experiences", "Luxury spa treatments", "Premium shopping", "Exclusive cultural events"]
         budget_activities = ["Free walking tours", "Local market exploration", "Public parks and gardens", "Street food experiences"]
         
-        # Generate activities based on preferences
         if "cultural" in preferences:
             primary_activities = cultural_activities
         elif "adventure" in preferences:
@@ -490,9 +492,8 @@ class RAGAgent:
         elif "budget" in preferences:
             primary_activities = budget_activities
         else:
-            primary_activities = cultural_activities + adventure_activities[:2]  # Mix for general travel
+            primary_activities = cultural_activities + adventure_activities[:2]
         
-        # Generate daily plans
         for day in range(1, duration + 1):
             plans += f"**Day {day}:**\n"
             
@@ -507,7 +508,6 @@ class RAGAgent:
                 plans += "• Transfer to airport\n"
                 plans += "• Depart for home\n\n"
             else:
-                # Vary activities for middle days
                 activity_index = (day - 2) % len(primary_activities)
                 primary_activity = primary_activities[activity_index]
                 
@@ -519,7 +519,6 @@ class RAGAgent:
         return plans
 
     def _get_preference_tips(self, preferences: List[str], location: str) -> str:
-        """Get preference-specific recommendations"""
         tips = []
         
         if "luxury" in preferences:
@@ -555,52 +554,40 @@ class RAGAgent:
         return "\n".join(tips) if tips else ""
 
     def _generate_fallback_itinerary(self, query: str) -> Dict[str, Any]:
-        """Generate a dynamic itinerary when Bedrock is not available"""
         logger.info("Using fallback itinerary generation (Bedrock not available)")
         
-        # Extract basic information
         location = self._extract_location(query)
         preferences = self._extract_preferences(query)
         
-        # Determine trip duration from query
         duration = self._extract_duration(query)
         
-        # Create location-specific content
         location_specific = self._get_location_specific_content(location)
         
-        # Create a comprehensive itinerary
         itinerary = f"**Complete Travel Plan for {location or 'your destination'}**\n\n"
         
-        # Add flight information if available
         if self.flight_data and self.flight_data.get('data'):
             flight_info = self._format_flight_info()
             itinerary += f"**Available Flights:**\n{flight_info}\n\n"
         
-        # Add hotel information if available
         if self.hotel_data and self.hotel_data.get('data'):
             hotel_info = self._format_hotel_info()
             itinerary += f"**Available Hotels:**\n{hotel_info}\n\n"
         
-        # Add location-specific introduction
         if location_specific['intro']:
             itinerary += f"**About {location}:**\n{location_specific['intro']}\n\n"
         
-        # Add detailed itinerary suggestions
         itinerary += f"**{duration}-Day Itinerary:**\n\n"
         
-        # Generate dynamic daily plans based on location and preferences
         daily_plans = self._generate_daily_plans(location, preferences, duration, location_specific)
         itinerary += daily_plans
         
         if preferences:
             itinerary += f"**Your Preferences:** {', '.join(preferences)}\n\n"
             
-            # Add preference-specific recommendations
             preference_tips = self._get_preference_tips(preferences, location)
             if preference_tips:
                 itinerary += f"**Personalized Recommendations:**\n{preference_tips}\n\n"
         
-        # Add location-specific tips
         if location_specific['tips']:
             itinerary += f"**{location} Travel Tips:**\n{location_specific['tips']}\n\n"
         
@@ -621,9 +608,30 @@ class RAGAgent:
             "hotel_data": self.hotel_data
         }
 
-    # Legacy endpoints kept for API compatibility
     async def add_itinerary(self, title: str, location: str, content: str, metadata: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
         return {"error": "Not supported in Bedrock-based RAG. Use document ingestion via PDF index."}
 
     async def get_itinerary_by_id(self, itinerary_id: str) -> Dict[str, Any]:
         return {"error": "Not supported in Bedrock-based RAG."}
+
+    def get_response(self, user_query: str) -> str:
+        """Generate a response using RAG."""
+        try:
+            logging.info(f"Processing query: {user_query}")
+            
+            # Retrieve relevant documents
+            relevant_docs = self.vector_store.similarity_search(user_query, k=3)
+            logging.info(f"Found {len(relevant_docs)} relevant documents")
+            
+            if not relevant_docs:
+                logging.warning("No relevant documents found in vector store")
+                return "I couldn't find relevant information in the travel guide. Please try rephrasing your question about destinations, activities, or travel tips."
+            
+            # ...existing code...
+            
+            logging.info(f"Generated response: {response[:100]}...")
+            return response
+            
+        except Exception as e:
+            logging.error(f"Error in RAG agent: {str(e)}", exc_info=True)
+            raise  # Raise the error instead of returning fallback
