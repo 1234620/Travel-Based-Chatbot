@@ -380,3 +380,36 @@
   z-index: 999 !important;
 }
 
+/* Markdown Itinerary Styling */
+.prose h1 {
+  @apply text-2xl font-bold mt-6 mb-4 text-foreground border-b border-border pb-2;
+}
+
+.prose h2 {
+  @apply text-xl font-semibold mt-6 mb-3 text-foreground;
+}
+
+.prose h3 {
+  @apply text-lg font-medium mt-4 mb-2 text-foreground;
+}
+
+.prose ul {
+  @apply my-3 space-y-2 list-none;
+}
+
+.prose li {
+  @apply leading-relaxed pl-0;
+}
+
+.prose p {
+  @apply my-3 leading-relaxed;
+}
+
+.prose strong {
+  @apply font-semibold text-foreground;
+}
+
+.prose code {
+  @apply bg-muted px-1 py-0.5 rounded text-sm;
+}
+

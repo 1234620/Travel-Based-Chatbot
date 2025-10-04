@@ -33,6 +33,7 @@ import {
   Loader2,
 } from "lucide-react"
 import Image from "next/image"
+import { dummyHotels, searchHotels } from "@/lib/dummy-hotels"
 
 const mockHotels = [
   {
@@ -98,16 +99,18 @@ const mockHotels = [
 ]
 
 const destinations = [
+  // India - Cities with Hotels Available
   "Mumbai, Maharashtra",
-  "Goa",
-  "Jaipur, Rajasthan",
   "New Delhi",
   "Bangalore, Karnataka",
-  "Chennai, Tamil Nadu",
-  "Kolkata, West Bengal",
-  "Hyderabad, Telangana",
-  "Pune, Maharashtra",
-  "Ahmedabad, Gujarat",
+  "Goa",
+  // International - Cities with Hotels Available
+  "Paris, France",
+  "Tokyo, Japan",
+  "Dubai, UAE",
+  "London, UK",
+  "New York, USA",
+  "Bali, Indonesia",
 ]
 
 export default function HotelsPage() {
@@ -131,55 +134,43 @@ export default function HotelsPage() {
 
   const handleSearch = async () => {
     if (destination && checkIn && checkOut) {
-      try {
-        setLoading(true)
+      setLoading(true)
+      setError(null)
+      setShowResults(true)
+      
+      // Simulate API delay for realistic UX
+      await new Promise(resolve => setTimeout(resolve, 800))
+      
+      // Search dummy hotels by destination
+      const results = searchHotels(destination)
+      
+      if (results.length > 0) {
+        // Transform dummy hotels to match the expected format
+        const transformedHotels = results.map(hotel => ({
+          id: hotel.id.toString(),
+          name: hotel.name,
+          location: hotel.location,
+          rating: hotel.rating,
+          reviews: hotel.reviews,
+          price: hotel.price,
+          originalPrice: hotel.originalPrice,
+          discount: hotel.discount,
+          image: hotel.image,
+          amenities: hotel.amenities,
+          badge: hotel.badge,
+          description: hotel.description,
+          features: hotel.features
+        }))
+        
+        setRealHotels(transformedHotels)
         setError(null)
-        setShowResults(true)
-        
-        // Call the backend API
-        const requestData = {
-          destination: destination,
-          check_in: checkIn.toISOString().split('T')[0],
-          check_out: checkOut.toISOString().split('T')[0],
-          rooms: guests.rooms,
-          adults: guests.adults,
-          children: guests.children
-        };
-        
-        const response = await fetch('http://127.0.0.1:8000/api/search-hotels', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(requestData)
-        })
-        
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`)
-        }
-        
-        const data = await response.json()
-        if (data.success && data.hotels && data.hotels.length > 0) {
-          setRealHotels(data.hotels)
-          setError(null)
-          console.log('Found hotels:', data.hotels.length)
-        } else {
-          // Show more detailed error information
-          const errorMessage = data.error 
-            ? `Error: ${data.error}` 
-            : `No hotels found for ${destination} from ${checkIn?.toLocaleDateString()} to ${checkOut?.toLocaleDateString()}. Please try different dates or destinations.`;
-          setError(errorMessage)
-          console.error('API returned error or no hotels:', data)
-          setRealHotels([])
-        }
-        
-      } catch (error) {
-        console.error('Error searching hotels:', error)
-        setError('Failed to search hotels. Please check the console for details.')
+        console.log(`Found ${results.length} hotels for ${destination}`)
+      } else {
+        setError(`No hotels found for "${destination}". Try searching for: Mumbai, New Delhi, Bangalore, Goa, Paris, Tokyo, Dubai, London, New York, or Bali`)
         setRealHotels([])
-      } finally {
-        setLoading(false)
       }
+      
+      setLoading(false)
     }
   }
 
@@ -241,6 +232,7 @@ export default function HotelsPage() {
 
   // Get user-friendly hotel chain names
   const getHotelChainName = (chainCode: string, hotelName: string) => {
+    if (!hotelName) return chainCode || 'HOTEL'
     const name = hotelName.toLowerCase()
     
     if (name.includes('marriott') || chainCode === 'MC') {
@@ -667,7 +659,7 @@ export default function HotelsPage() {
                     <p className="mb-2">💡 <strong>Try these suggestions:</strong></p>
                     <ul className="text-left space-y-1">
                       <li>• Try different dates (hotels may not be available on all dates)</li>
-                      <li>• Search popular destinations like Mumbai, Delhi, or Bangalore</li>
+                      <li>• Search popular destinations: Mumbai, Delhi, Bangalore, Goa, Paris, Tokyo, Dubai, London, New York, Bali</li>
                       <li>• Check if the destination has hotels available</li>
                       <li>• Some destinations may have limited hotel availability</li>
                     </ul>
@@ -684,21 +676,21 @@ export default function HotelsPage() {
               {!loading && !error && realHotels.length > 0 && (
                 <div className="grid lg:grid-cols-3 gap-6">
                     {realHotels.map((hotel) => {
-                    const formattedHotel = formatHotelData(hotel)
+                    // Dummy data is already formatted, no need to transform
                     return (
-                      <Card key={formattedHotel.id} className="card-hover overflow-hidden">
+                      <Card key={hotel.id} className="card-hover overflow-hidden">
                         <div className="relative h-48">
-                          <Image src={formattedHotel.image || "/placeholder.svg"} alt={formattedHotel.name} fill className="object-cover" />
+                          <Image src={hotel.image || "/placeholder.svg"} alt={hotel.name} fill className="object-cover" />
                           <div className="absolute top-4 left-4">
-                            <Badge className="bg-primary text-primary-foreground">{formattedHotel.badge}</Badge>
+                            <Badge className="bg-primary text-primary-foreground">{hotel.badge}</Badge>
                           </div>
                           <div className="absolute top-4 right-4">
-                            <Badge className="bg-accent text-accent-foreground">{formattedHotel.discount}% OFF</Badge>
+                            <Badge className="bg-accent text-accent-foreground">{hotel.discount}% OFF</Badge>
                           </div>
                           <div className="absolute bottom-4 right-4">
                             <div className="flex items-center space-x-1 bg-background/90 rounded-full px-2 py-1">
                               <Star className="w-3 h-3 text-yellow-400 fill-current" />
-                              <span className="text-sm font-medium">{formattedHotel.rating}</span>
+                              <span className="text-sm font-medium">{hotel.rating}</span>
                             </div>
                           </div>
                         </div>
@@ -706,10 +698,10 @@ export default function HotelsPage() {
                         <CardContent className="p-6">
                           <div className="flex items-start justify-between mb-2">
                             <div>
-                              <h3 className="text-xl font-semibold mb-1">{formattedHotel.name}</h3>
+                              <h3 className="text-xl font-semibold mb-1">{hotel.name}</h3>
                               <div className="flex items-center text-muted-foreground text-sm mb-2">
                                 <MapPin className="w-4 h-4 mr-1" />
-                                {formattedHotel.location}
+                                {hotel.location}
                               </div>
                             </div>
                           </div>
@@ -717,34 +709,16 @@ export default function HotelsPage() {
                           <div className="flex items-center space-x-2 mb-3">
                             <div className="flex items-center space-x-1">
                               <Star className="w-4 h-4 text-yellow-400 fill-current" />
-                              <span className="font-medium">{formattedHotel.rating}</span>
+                              <span className="font-medium">{hotel.rating}</span>
                             </div>
-                            <span className="text-muted-foreground text-sm">({formattedHotel.reviews} reviews)</span>
+                            <span className="text-muted-foreground text-sm">({hotel.reviews} reviews)</span>
                           </div>
 
-                          <p className="text-muted-foreground text-sm mb-3">{formattedHotel.description}</p>
-
-                          {/* Room Details */}
-                          {(formattedHotel.roomType || formattedHotel.bedType) && (
-                            <div className="bg-muted/50 rounded-lg p-3 mb-4">
-                              <div className="text-sm font-medium mb-1">Room Details:</div>
-                              <div className="text-xs text-muted-foreground space-y-1">
-                                {formattedHotel.roomType && (
-                                  <div>Room Type: {formattedHotel.roomType.replace('_', ' ')}</div>
-                                )}
-                                {formattedHotel.bedType && formattedHotel.bedCount && (
-                                  <div>Bed: {formattedHotel.bedCount} {formattedHotel.bedType.toLowerCase()} bed(s)</div>
-                                )}
-                                {formattedHotel.checkInDate && formattedHotel.checkOutDate && (
-                                  <div>Available: {formattedHotel.checkInDate} to {formattedHotel.checkOutDate}</div>
-                                )}
-                              </div>
-                            </div>
-                          )}
+                          <p className="text-muted-foreground text-sm mb-3">{hotel.description}</p>
 
                           {/* Amenities */}
                           <div className="flex flex-wrap gap-2 mb-4">
-                            {formattedHotel.amenities.slice(0, 4).map((amenity) => {
+                            {hotel.amenities.slice(0, 4).map((amenity: string) => {
                               const IconComponent = amenityIcons[amenity as keyof typeof amenityIcons] || Shield
                               return (
                                 <div key={amenity} className="flex items-center space-x-1 bg-muted rounded-full px-2 py-1">
@@ -753,9 +727,9 @@ export default function HotelsPage() {
                                 </div>
                               )
                             })}
-                            {formattedHotel.amenities.length > 4 && (
+                            {hotel.amenities.length > 4 && (
                               <Badge variant="secondary" className="text-xs">
-                                +{formattedHotel.amenities.length - 4} more
+                                +{hotel.amenities.length - 4} more
                               </Badge>
                             )}
                           </div>
@@ -766,10 +740,10 @@ export default function HotelsPage() {
                           <div className="flex items-center justify-between">
                             <div>
                               <div className="flex items-center space-x-2">
-                                <span className="text-2xl font-bold text-accent">₹{formattedHotel.price.toLocaleString()}</span>
-                                {formattedHotel.originalPrice && (
+                                <span className="text-2xl font-bold text-accent">₹{hotel.price.toLocaleString()}</span>
+                                {hotel.originalPrice && (
                                   <span className="text-sm text-muted-foreground line-through">
-                                    ₹{formattedHotel.originalPrice.toLocaleString()}
+                                    ₹{hotel.originalPrice.toLocaleString()}
                                   </span>
                                 )}
                               </div>

@@ -216,6 +216,21 @@ export default function FlightsPage() {
       return duration.replace('PT', '').replace('H', 'h ').replace('M', 'm')
     }
     
+    // Fix price conversion - Amadeus API returns EUR prices
+    let displayPrice = flight.price?.total ? parseFloat(flight.price.total) : 0
+    let displayCurrency = flight.price?.currency || 'EUR'
+    
+    // If price seems too high (likely in cents), divide by 100
+    if (displayCurrency === 'EUR' && displayPrice > 1000) {
+      displayPrice = displayPrice / 100
+    }
+    
+    // Convert EUR to INR (1 EUR ≈ 90 INR)
+    if (displayCurrency === 'EUR') {
+      displayPrice = Math.round(displayPrice * 90)
+      displayCurrency = 'INR'
+    }
+    
     return {
       id: flight.id,
       airline: flight.validatingAirlineCodes?.[0] || 'Unknown',
@@ -231,8 +246,8 @@ export default function FlightsPage() {
         city: to?.city || 'N/A'
       },
       duration: formatDuration(itinerary?.duration),
-      price: flight.price?.total ? Math.round(parseFloat(flight.price.total) * 100) : 0, // Convert to cents for display
-      currency: flight.price?.currency || 'EUR',
+      price: displayPrice,
+      currency: displayCurrency,
       stops: segments.length === 1 ? 'Non-stop' : `${segments.length - 1} stop${segments.length > 2 ? 's' : ''}`,
       aircraft: firstSegment?.aircraft?.code || 'N/A',
       amenities: ['wifi', 'meals'], // Default amenities

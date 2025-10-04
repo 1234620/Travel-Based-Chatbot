@@ -258,29 +258,32 @@ def preprocess_markdown(text: str) -> str:
     # Fix heading formatting - ensure space after # symbols
     text = re.sub(r'^(#{1,6})([^\s#])', r'\1 \2', text, flags=re.MULTILINE)
     
-    # Ensure proper spacing around headings
-    text = re.sub(r'\n(#{1,6}\s+[^\n]+)\n', r'\n\n\1\n\n', text)
-    
-    # Clean up multiple consecutive blank lines (max 2)
-    text = re.sub(r'\n{3,}', '\n\n', text)
+    # Ensure proper spacing around headings (double line break before, single after)
+    text = re.sub(r'\n(#{1,6}\s+[^\n]+)\n', r'\n\n\1\n', text)
     
     # Fix list formatting - ensure bullet points are properly formatted
     text = re.sub(r'^\*\s+', '• ', text, flags=re.MULTILINE)
     text = re.sub(r'^-\s+', '• ', text, flags=re.MULTILINE)
     
-    # Ensure spacing before lists
+    # Ensure spacing before bullet lists (but not if already spaced)
     text = re.sub(r'([^\n])\n(• )', r'\1\n\n\2', text)
+    
+    # Ensure spacing between bullet points groups
+    text = re.sub(r'(• [^\n]+)\n(#{2})', r'\1\n\n\2', text)
     
     # Clean up bold formatting
     text = re.sub(r'\*\*\*([^*]+)\*\*\*', r'**\1**', text)  # Triple asterisks to double
     
-    # Add spacing after sections
-    text = re.sub(r'(\*\*[^*]+\*\*:)\s*\n', r'\1\n\n', text)
+    # Add spacing after bold section headers
+    text = re.sub(r'(\*\*[^*]+\*\*:)\s*\n', r'\1\n', text)
+    
+    # Clean up multiple consecutive blank lines (max 2)
+    text = re.sub(r'\n{3,}', '\n\n', text)
     
     # Remove trailing whitespace from lines
     text = '\n'.join(line.rstrip() for line in text.split('\n'))
     
-    # Trim overall
+    # Trim overall but ensure it starts clean
     text = text.strip()
     
     return text
