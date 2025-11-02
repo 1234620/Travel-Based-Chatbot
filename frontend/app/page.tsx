@@ -56,37 +56,6 @@ export default function HomePage() {
             </p>
           </div>
 
-          <div className="bg-black/30 backdrop-blur-md rounded-2xl p-6 max-w-4xl mx-auto mb-12 bounce-in border border-white/20">
-            <div className="grid md:grid-cols-4 gap-4">
-              <div className="relative">
-                <MapPin className="absolute left-3 top-3 w-5 h-5 text-white/70" />
-                <Input
-                  placeholder="Where to?"
-                  className="pl-10 bg-white/20 border-white/30 text-white placeholder:text-white/70 focus:bg-white/30"
-                />
-              </div>
-              <div className="relative">
-                <Calendar className="absolute left-3 top-3 w-5 h-5 text-white/70" />
-                <Input
-                  placeholder="Check-in"
-                  type="date"
-                  className="pl-10 bg-white/20 border-white/30 text-white placeholder:text-white/70 focus:bg-white/30"
-                />
-              </div>
-              <div className="relative">
-                <Users className="absolute left-3 top-3 w-5 h-5 text-white/70" />
-                <Input
-                  placeholder="Guests"
-                  className="pl-10 bg-white/20 border-white/30 text-white placeholder:text-white/70 focus:bg-white/30"
-                />
-              </div>
-              <Button size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground pulse-glow">
-                <Search className="w-5 h-5 mr-2" />
-                Search
-              </Button>
-            </div>
-          </div>
-
           {/* Quick Search Cards */}
           <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto mb-8">
             <Link href="/flights">
@@ -127,12 +96,12 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Why Choose TravelAI Section */}
+      {/* Why Choose TripTactix Section */}
       <section className="py-20 section-bg-1 parallax-bg relative">
         <div className="absolute inset-0 bg-white/90" />
         <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16 slide-up">
-            <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-4">Why Choose TravelAI?</h2>
+            <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-4">Why Choose TripTactix?</h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
               Experience the future of travel planning with our AI-powered platform
             </p>
@@ -287,7 +256,7 @@ export default function HomePage() {
                 location: "New York, USA",
                 image: "/happy-female-traveler-with-backpack.jpg",
                 rating: 5,
-                text: "TravelAI made planning my European adventure so easy! The AI recommendations were spot-on and saved me hours of research.",
+                text: "TripTactix made planning my European adventure so easy! The AI recommendations were spot-on and saved me hours of research.",
               },
               {
                 name: "Miguel Rodriguez",
@@ -316,11 +285,11 @@ export default function HomePage() {
                       alt={testimonial.name}
                       width={60}
                       height={60}
-                      className="rounded-full mr-4"
+                      className="rounded-full mr-4 object-cover"
                     />
-                    <div>
-                      <h4 className="font-semibold text-white">{testimonial.name}</h4>
-                      <p className="text-white/70 text-sm">{testimonial.location}</p>
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-foreground text-base">{testimonial.name}</h4>
+                      <p className="text-muted-foreground text-sm">{testimonial.location}</p>
                     </div>
                   </div>
                   <div className="flex mb-3">
@@ -328,8 +297,8 @@ export default function HomePage() {
                       <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
                     ))}
                   </div>
-                  <Quote className="w-6 h-6 text-white/50 mb-2" />
-                  <p className="text-white/90 italic">{testimonial.text}</p>
+                  <Quote className="w-6 h-6 text-muted-foreground/50 mb-2" />
+                  <p className="text-foreground italic leading-relaxed">{testimonial.text}</p>
                 </CardContent>
               </Card>
             ))}
@@ -368,7 +337,7 @@ export default function HomePage() {
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center slide-up">
           <h2 className="text-4xl md:text-5xl font-bold text-white mb-6">Ready to Start Your Adventure?</h2>
           <p className="text-xl text-white/90 mb-8">
-            Join thousands of travelers who trust TravelAI for their journey planning
+            Join thousands of travelers who trust TripTactix for their journey planning
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" className="bg-accent hover:bg-accent/90 text-accent-foreground text-lg px-8 py-4">
@@ -396,7 +365,7 @@ export default function HomePage() {
                 <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                   <Plane className="w-5 h-5 text-primary-foreground" />
                 </div>
-                <span className="text-xl font-bold text-card-foreground">TravelAI</span>
+                <span className="text-xl font-bold text-card-foreground">TripTactix</span>
               </div>
               <p className="text-muted-foreground">Your intelligent travel companion for seamless journey planning.</p>
             </div>
@@ -466,7 +435,7 @@ export default function HomePage() {
           </div>
 
           <div className="border-t border-border mt-8 pt-8 text-center text-muted-foreground">
-            <p>&copy; 2024 TravelAI. All rights reserved.</p>
+            <p>&copy; 2025 TripTactix. All rights reserved.</p>
           </div>
         </div>
       </footer>

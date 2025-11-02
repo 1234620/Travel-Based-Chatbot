@@ -24,6 +24,8 @@ import {
   Search,
   MapPin,
   Loader2,
+  Clock,
+  ArrowRight,
 } from "lucide-react"
 
 interface Airport {
@@ -666,6 +668,77 @@ export default function FlightsPage() {
               </div>
             </CardContent>
           </Card>
+        </div>
+      </section>
+
+      {/* Featured Flights Section */}
+      <section className="py-12 bg-gray-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold mb-2">Popular Flight Routes</h2>
+            <p className="text-muted-foreground">Great deals on trending destinations</p>
+          </div>
+          
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[
+              { from: "Delhi", to: "Mumbai", duration: "2h 30m", price: "3,999", discount: "15% OFF" },
+              { from: "Mumbai", to: "Dubai", duration: "3h 15m", price: "12,999", discount: "20% OFF" },
+              { from: "Bangalore", to: "Singapore", duration: "4h 30m", price: "15,999", discount: "10% OFF" },
+              { from: "Delhi", to: "London", duration: "9h 45m", price: "35,999", discount: "25% OFF" },
+              { from: "Mumbai", to: "New York", duration: "15h 30m", price: "45,999", discount: "30% OFF" },
+              { from: "Chennai", to: "Bangkok", duration: "3h 45m", price: "8,999", discount: "18% OFF" },
+            ].map((route, index) => (
+              <Card key={index} className="card-hover relative overflow-hidden">
+                <div className="absolute top-4 right-4">
+                  <Badge className="bg-red-500 text-white">{route.discount}</Badge>
+                </div>
+                <CardContent className="p-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold">{route.from}</div>
+                      <div className="text-sm text-muted-foreground">Departure</div>
+                    </div>
+                    <div className="flex-1 flex items-center justify-center px-4">
+                      <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center">
+                        <Plane className="w-6 h-6 text-primary" />
+                      </div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold">{route.to}</div>
+                      <div className="text-sm text-muted-foreground">Arrival</div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-center mb-4 text-muted-foreground">
+                    <Clock className="w-4 h-4 mr-2" />
+                    <span>{route.duration}</span>
+                  </div>
+                  
+                  <div className="text-center mb-4">
+                    <div className="text-sm text-muted-foreground mb-1">Starting from</div>
+                    <div className="text-3xl font-bold text-primary">₹{route.price}</div>
+                  </div>
+                  
+                  <Button 
+                    className="w-full bg-white hover:bg-gray-50 text-primary border border-primary"
+                    onClick={() => {
+                      // Auto-fill the search form with this route
+                      const fromAirport = airports.find(a => a.city === route.from);
+                      const toAirport = airports.find(a => a.city === route.to);
+                      if (fromAirport) setFrom(fromAirport);
+                      if (toAirport) setTo(toAirport);
+                      // Scroll to search form
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                  >
+                    <Search className="w-4 h-4 mr-2" />
+                    Search Flights
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
         </div>
       </section>
 

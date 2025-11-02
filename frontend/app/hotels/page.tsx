@@ -341,14 +341,6 @@ export default function HotelsPage() {
                   <Hotel className="w-4 h-4" />
                   <span>Hotels & Homes</span>
                 </Button>
-                <Button variant="outline" className="flex items-center space-x-2 bg-transparent">
-                  <Hotel className="w-4 h-4" />
-                  <span>Private Stays</span>
-                </Button>
-                <Button variant="outline" className="flex items-center space-x-2 bg-transparent">
-                  <Hotel className="w-4 h-4" />
-                  <span>Monthly Stays</span>
-                </Button>
               </div>
 
               {/* Search Fields */}
